@@ -21,6 +21,53 @@ The architecture follows a layered design to preserve maintainability, security,
 
 The system is designed around a centralized source of truth for IT assets and associated operational events.
 
+## Create Asset Flow
+
+The Create Asset feature follows the flow below:
+
+Client
+  ↓
+POST /api/assets
+  ↓
+AssetController
+  ↓
+CreateAsset
+  ↓
+Asset
+  ↓
+KnexAssetRepository
+  ↓
+JSON Response
+
+### Sample Request
+
+POST /api/assets
+
+{
+  "assetTag": "LAPTOP-001",
+  "assetType": "Laptop",
+  "category": "IT Equipment",
+  "manufacturer": "Dell",
+  "model": "Latitude 5440",
+  "serialNumber": "SN123456",
+  "status": "Available"
+}
+
+### Sample Response
+
+{
+  "success": true,
+  "data": {
+    "assetTag": "LAPTOP-001",
+    "assetType": "Laptop",
+    "category": "IT Equipment",
+    "manufacturer": "Dell",
+    "model": "Latitude 5440",
+    "serialNumber": "SN123456",
+    "status": "Available"
+  }
+}
+
 ## 2. Architecture Principles
 The architecture must follow these core rules:
 
