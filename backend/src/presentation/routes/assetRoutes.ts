@@ -15,13 +15,8 @@ router.get("/assets", (_req, res) => {
   });
 });
 
-router.post("/assets", (_req, res) => {
-  console.log("POST /assets reached");
-
-  return res.json({
-    success: true,
-    message: "NEW ROUTE WORKING"
-  });
+router.post("/assets", (req, res) => {
+  return assetController.create(req, res);
 });
 
 export default router;
