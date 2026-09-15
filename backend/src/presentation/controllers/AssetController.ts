@@ -7,6 +7,8 @@ export class AssetController {
   ) {}
 
   async create(req: Request, res: Response): Promise<Response> {
+    console.log("AssetController reached");
+    
     try {
       const asset = await this.createAsset.execute(req.body);
 
