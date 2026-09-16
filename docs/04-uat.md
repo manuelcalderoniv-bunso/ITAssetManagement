@@ -41,3 +41,35 @@ User creates a new IT asset by submitting asset details through the Create Asset
 ## Status
 
 PASS ✅
+UAT-002
+
+Requirement:
+FR-002
+
+Story:
+STORY-002
+
+Scenario:
+User requests asset list
+
+Expected:
+System returns list of assets
+
+Actual:
+GET /api/assets returned HTTP 200 OK
+
+Result:
+PASS
+                    UAT-002
+
+                    Requirement: FR-002
+
+                    Story: STORY-002
+
+                    Scenario: User requests asset list
+
+                    Expected: System returns list of assets
+
+                    Actual: GET /api/assets returned HTTP 200 OK
+
+                    Result: PASS
