@@ -1,9 +1,11 @@
 import { Request, Response } from "express";
 import { CreateAsset } from "../../application/services/CreateAsset";
+import { GetAssets } from "../../application/services/GetAssets";
 
 export class AssetController {
   constructor(
-    private readonly createAsset: CreateAsset
+    private readonly createAsset: CreateAsset,
+    private readonly getAssets: GetAssets
   ) {}
 
   async create(req: Request, res: Response): Promise<Response> {
@@ -25,5 +27,10 @@ export class AssetController {
             : "Unknown error",
       });
     }
+   }
+     async getAll(_req: Request, res: Response): Promise<Response> {
+    const assets = await this.getAssets.execute();
+
+    return res.status(200).json(assets);
   }
-}
+ }
