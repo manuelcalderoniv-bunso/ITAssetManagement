@@ -442,3 +442,16 @@ The initiative will be considered successful when the system provides:
 - Reduced reliance on spreadsheets and manual records
 
 This requirements document is the baseline for the project and should be used to guide design, implementation, testing, and documentation updates.
+FR-002 - User can view assets
+
+Acceptance Criteria:
+- User can retrieve asset list
+- System returns HTTP 200 OK
+- Asset information is displayed
+                                 FR-002 - User can view assets
+
+                                Acceptance Criteria:
+
+                                    User can retrieve asset list
+                                    System returns HTTP 200 OK
+                                    Asset information is displayed

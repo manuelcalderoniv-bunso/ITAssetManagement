@@ -9,6 +9,6 @@
     "rootDir": "./src",
     "outDir": "./dist"
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "../frontend/frontend-ui/src/components", "../frontend/frontend-ui/src/api"],
   "exclude": ["node_modules"]
 }

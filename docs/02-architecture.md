@@ -550,3 +550,12 @@ It is intentionally structured to:
 - allow phased delivery from MVP to future-state enhancements
 
 The result is an application that can grow from a focused asset tracking tool into a governance platform without sacrificing maintainability or integrity.
+GET /api/assets
+     ↓
+AssetController.getAll()
+     ↓
+GetAssets
+     ↓
+AssetRepository.findAll()
+     ↓
+KnexAssetRepository.findAll()
