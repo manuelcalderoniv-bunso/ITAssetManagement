@@ -58,6 +58,10 @@ export default function AiAssistant({ asset }) {
                 <dt>Warranty ends</dt>
                 <dd>{asset.warrantyEnd ?? "-"}</dd>
               </div>
+              <div>
+                <dt>Qty</dt>
+                <dd>{asset.quantity ?? 1}</dd>
+              </div>
             </dl>
 
             {info?.lines?.length ? (
