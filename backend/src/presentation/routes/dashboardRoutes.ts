@@ -32,6 +32,70 @@ router.get("/dashboard/assignment-history", async (_req, res) => {
     });
   }
 });
+// ------------------------------------------------------------
+// Chart data
+// ------------------------------------------------------------
 
+router.get("/dashboard/by-category", async (_req, res) => {
+  try {
+    const rows = await db("assets")
+      .select("category")
+      .count("* as total")
+      .groupBy("category")
+      .orderBy("total", "desc");
 
+    return res.status(200).json(
+      rows.map((r) => ({ name: r.category, value: Number(r.total) }))
+    );
+  } catch (error) {
+    console.error("BY CATEGORY ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      error: { code: "QUERY_FAILED", message: "Could not load category data" },
+    });
+  }
+});
+
+router.get("/dashboard/by-department", async (_req, res) => {
+  try {
+    const rows = await db("assets")
+      .select(db.raw("COALESCE(department, 'Unassigned') as department"))
+      .count("* as total")
+      .groupBy("department")
+      .orderBy("total", "desc");
+
+    return res.status(200).json(
+      rows.map((r) => ({ name: r.department, value: Number(r.total) }))
+    );
+  } catch (error) {
+    console.error("BY DEPARTMENT ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      error: { code: "QUERY_FAILED", message: "Could not load department data" },
+    });
+  }
+});
+
+router.get("/dashboard/warranty-expiry", async (_req, res) => {
+  try {
+    const rows = await db("assets")
+      .select(db.raw("TO_CHAR(warranty_end, 'YYYY-MM') as month"))
+      .count("* as total")
+      .whereNotNull("warranty_end")
+      .whereRaw("warranty_end >= CURRENT_DATE")
+      .whereRaw("warranty_end <= CURRENT_DATE + INTERVAL '12 months'")
+      .groupByRaw("TO_CHAR(warranty_end, 'YYYY-MM')")
+      .orderBy("month", "asc");
+
+    return res.status(200).json(
+      rows.map((r) => ({ month: r.month, total: Number(r.total) }))
+    );
+  } catch (error) {
+    console.error("WARRANTY EXPIRY ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      error: { code: "QUERY_FAILED", message: "Could not load warranty data" },
+    });
+  }
+});
 export default router;

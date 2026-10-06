@@ -12,7 +12,6 @@ const getUserHistory = new GetUserHistory();
 
 const auditController = new AuditController(getAssetHistory, getUserHistory);
 
-// Ang listahan ng lahat ng audit logs — ito ang hinahanap ng Audit Logs page
 router.get("/audit-logs", async (_req, res) => {
   try {
     const rows = await db("audit_logs")
@@ -44,6 +43,32 @@ router.get("/audit/assets/:tag", authMiddleware, (req, res) => {
 
 router.get("/audit/user/:email", authMiddleware, (req, res) => {
   return auditController.getUserHistory(req, res);
+});
+
+router.post("/audit/logout", async (req, res) => {
+  try {
+    const { email } = req.body ?? {};
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        error: { code: "VALIDATION_ERROR", message: "Email is required" },
+      });
+    }
+    await db("audit_logs").insert({
+      user_name: email,
+      action: "Logout",
+      table_name: "users",
+      record_id: email,
+      ip_address: req.ip || null,
+    });
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.error("LOGOUT AUDIT ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      error: { code: "AUDIT_FAILED", message: "Could not record sign out" },
+    });
+  }
 });
 
 export default router;
