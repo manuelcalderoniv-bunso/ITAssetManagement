@@ -21,7 +21,7 @@ export default function Assets() {
     onResult: (text) => setSearch(text),
   });
 
-    const loadAssets = async () => {
+      const loadAssets = async () => {
     try {
       setLoading(true);
       const data = await apiGet("/assets");
@@ -31,11 +31,12 @@ export default function Assets() {
       window.__itamsAssets = list;
       setError("");
     } catch (err) {
-      setError("Could not load assets.");
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
+
   useEffect(() => {
     loadAssets();
   }, []);
@@ -81,8 +82,8 @@ export default function Assets() {
     setForm({ assetTag: asset.assetTag, assetType: asset.assetType, status: asset.status });
   };
 
-  const filtered = assets.filter((a) => {
-    const q = search.toLowerCase();
+    const filtered = assets.filter((a) => {
+    const q = search.toLowerCase().replace(/[.,!?;:]+$/g, "").trim();
     if (!q) return true;
     return [
       a.assetTag, a.assetType, a.category, a.manufacturer, a.model,
@@ -152,6 +153,18 @@ export default function Assets() {
         </button>
       </div>
 
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+        {["Lenovo", "Dell", "HP", "Available", "Issued", "Maintenance"].map((s) => (
+          <button
+            key={s}
+            className="btn-ghost btn-mini"
+            onClick={() => setSearch(s)}
+          >
+            {s}
+          </button>
+        ))}
+      </div>
+      
       {voice.listening || voice.transcript || voice.error ? (
         <div className="voice-strip">
           {voice.listening ? (
@@ -222,9 +235,21 @@ export default function Assets() {
               <div key={i} className="skeleton skeleton-line" />
             ))}
           </div>
-        ) : filtered.length === 0 ? (
-          <div className="state-empty">No assets match your search.</div>
+                ) : filtered.length === 0 ? (
+          <div className="state-empty">
+            No assets match "{search.trim()}".{" "}
+            {assets.length > 0 && (
+              <>
+                Available manufacturers:{" "}
+                {[...new Set(assets.map((a) => a.manufacturer).filter(Boolean))]
+                  .sort()
+                  .join(", ")}
+                .
+              </>
+            )}
+          </div>
         ) : (
+
           <div style={{ overflowX: "auto" }}>
             <table>
               <thead>
@@ -274,7 +299,7 @@ export default function Assets() {
           </div>
         )}
       </div>
-      
+
         <AiAssistant asset={selected} />
       </div>
 
