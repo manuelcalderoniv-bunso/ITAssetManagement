@@ -6,9 +6,8 @@
     "strict": true,
     "skipLibCheck": true,
     "verbatimModuleSyntax": false,
-    "rootDir": "./src",
     "outDir": "./dist"
   },
-  "include": ["src/**/*", "../frontend/frontend-ui/src/components", "../frontend/frontend-ui/src/api"],
-  "exclude": ["node_modules"]
+  "include": ["src/**/*", "knexfile.ts"],
+  "exclude": ["node_modules", "dist"]
 }
