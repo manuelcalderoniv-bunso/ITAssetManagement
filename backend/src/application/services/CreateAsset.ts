@@ -9,6 +9,7 @@ export interface CreateAssetRequest {
   model: string;
   serialNumber: string;
   status: string;
+  createdBy?: string;
 }
 
 export class CreateAsset {
@@ -18,7 +19,7 @@ export class CreateAsset {
 
   async execute(request: CreateAssetRequest): Promise<Asset> {
     const existingAsset =
-      await this.assetRepository.findByAssetTag(request.assetTag);
+      await this.assetRepository.findByTag(request.assetTag);
 
     if (existingAsset) {
       throw new Error("Asset Tag already exists");
@@ -32,11 +33,11 @@ export class CreateAsset {
       model: request.model,
       serialNumber: request.serialNumber,
       status: request.status,
-    });
+      createdBy: request.createdBy,
+   });
 
     await this.assetRepository.save(asset);
 
     return asset;
   }
 }
-``
