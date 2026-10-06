@@ -1,3 +1,6 @@
+import { useVoiceSearch } from "../hooks/useVoiceSearch";
+import { learnFromAssets } from "../lib/assetKnowledge";
+import AiAssistant from "../components/AiAssistant";
 import { downloadCsv } from "../lib/exportCsv";
 import { useEffect, useState } from "react";
 import { apiGet, apiSend, unwrapList } from "../api/client";
@@ -11,12 +14,21 @@ export default function Assets() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState(EMPTY);
+  const [selected, setSelected] = useState(null);
 
-  const loadAssets = async () => {
+  const voice = useVoiceSearch({
+    lang: "en-PH",
+    onResult: (text) => setSearch(text),
+  });
+
+    const loadAssets = async () => {
     try {
       setLoading(true);
       const data = await apiGet("/assets");
-      setAssets(unwrapList(data));
+      const list = unwrapList(data);
+      setAssets(list);
+      learnFromAssets(list);
+      window.__itamsAssets = list;
       setError("");
     } catch (err) {
       setError("Could not load assets.");
@@ -24,7 +36,6 @@ export default function Assets() {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     loadAssets();
   }, []);
@@ -94,41 +105,67 @@ export default function Assets() {
     <>
       <h1>Assets Management</h1>
 
-      <div className="panel" style={{ marginBottom: 20 }}>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <div className="panel assets-toolbar">
+        <div className="search-wrap">
+          <span className="search-icon">🔍</span>
           <input
             placeholder="Search asset tag, type, model, serial..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ flex: 1, minWidth: 260 }}
           />
-          <button className="btn-ghost" onClick={loadAssets}>
-            Refresh
-          </button>
-          <button
-            className="btn-ghost"
-            onClick={() =>
-              downloadCsv(
-                `IT-Assets-${new Date().toISOString().slice(0, 10)}.csv`,
-                filtered,
-                [
-                  { key: "assetTag", label: "Asset Tag" },
-                  { key: "assetType", label: "Type" },
-                  { key: "category", label: "Category" },
-                  { key: "manufacturer", label: "Manufacturer" },
-                  { key: "model", label: "Model" },
-                  { key: "serialNumber", label: "Serial Number" },
-                  { key: "status", label: "Status" },
-                  { key: "department", label: "Department" },
-                ]
-              )
-            }
-          >
-            ⬇ Export CSV
-          </button>
+          {voice.supported ? (
+            <button
+              type="button"
+              className={`mic-btn${voice.listening ? " listening" : ""}`}
+              onClick={voice.toggle}
+              title={voice.listening ? "Stop listening" : "Search by voice"}
+            >
+              🎤
+            </button>
+          ) : null}
         </div>
+
+        <button className="btn-ghost" onClick={loadAssets}>
+          Refresh
+        </button>
+
+        <button
+          className="btn-ghost"
+          onClick={() =>
+            downloadCsv(
+              `IT-Assets-${new Date().toISOString().slice(0, 10)}.csv`,
+              filtered,
+              [
+                { key: "assetTag", label: "Asset Tag" },
+                { key: "assetType", label: "Type" },
+                { key: "category", label: "Category" },
+                { key: "manufacturer", label: "Manufacturer" },
+                { key: "model", label: "Model" },
+                { key: "serialNumber", label: "Serial Number" },
+                { key: "status", label: "Status" },
+                { key: "department", label: "Department" },
+              ]
+            )
+          }
+        >
+          ⬇ Export CSV
+        </button>
       </div>
 
+      {voice.listening || voice.transcript || voice.error ? (
+        <div className="voice-strip">
+          {voice.listening ? (
+            <>
+              <span className="voice-pulse" />
+              <span>Listening… {voice.transcript}</span>
+            </>
+          ) : voice.error ? (
+            <span>{voice.error}</span>
+          ) : (
+            <span>Heard: “{voice.transcript}”</span>
+          )}
+        </div>
+      ) : null}
       <div className="panel" style={{ marginBottom: 20 }}>
         <h3>{editingTag ? `Edit Asset — ${editingTag}` : "Add Asset"}</h3>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -177,7 +214,7 @@ export default function Assets() {
           <span>{error}</span>
         </div>
       )}
-
+      <div className="assets-split">
       <div className="panel">
         {loading ? (
           <div>
@@ -205,7 +242,11 @@ export default function Assets() {
               </thead>
               <tbody>
                 {filtered.map((a) => (
-                  <tr key={a.assetTag}>
+                  <tr
+                    key={a.assetTag}
+                    className={selected?.assetTag === a.assetTag ? "row-selected" : undefined}
+                    onClick={() => setSelected(a)}
+                  >
                     <td><strong>{a.assetTag}</strong></td>
                     <td>{a.assetType}</td>
                     <td>{a.category}</td>
@@ -232,6 +273,9 @@ export default function Assets() {
             </table>
           </div>
         )}
+      </div>
+      
+        <AiAssistant asset={selected} />
       </div>
 
       <div className="footer">
