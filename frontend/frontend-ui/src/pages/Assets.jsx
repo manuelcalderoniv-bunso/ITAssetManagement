@@ -335,7 +335,8 @@ export default function Assets() {
                 { key: "serialNumber", label: "Serial Number" },
                 { key: "status", label: "Status" },
                 { key: "department", label: "Department" },
-                { key: "quantity", label: "Qty" },
+                { key: "quantity", label: "Qty", numeric: true },
+
               ]
             )
           }
