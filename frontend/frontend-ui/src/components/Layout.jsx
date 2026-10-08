@@ -1,17 +1,23 @@
 import UserMenu from "./UserMenu";
 import { Link, useLocation } from "react-router-dom";
 import logo from "../assets/Dizon-Logo.png";
+import { getToken } from "../hooks/useAuth";
 
 const items = [
   { to: "/", label: "Dashboard", icon: "🏠" },
   { to: "/assets", label: "Assets", icon: "💻" },
   { to: "/assignments", label: "Assignments", icon: "📦" },
   { to: "/auditlogs", label: "Audit Logs", icon: "📝" },
-  { to: "/login", label: "Login", icon: "🚪" },
 ];
 
 export default function Layout({ children }) {
   const { pathname } = useLocation();
+  const loggedIn = Boolean(getToken());
+
+  // Walang sidebar kapag hindi pa naka-login.
+  if (!loggedIn) {
+    return <main className="content content-full">{children}</main>;
+  }
 
   return (
     <div className="main-container">
@@ -33,10 +39,10 @@ export default function Layout({ children }) {
               </li>
             ))}
           </ul>
-                </nav>
+        </nav>
 
-                <UserMenu />
-              </aside>
+        <UserMenu />
+      </aside>
       <main className="content">{children}</main>
     </div>
   );
