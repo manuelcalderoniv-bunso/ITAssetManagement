@@ -131,8 +131,9 @@ export default function Dashboard() {
                   </span>
                   <span className="activity-text">
                     {a.record_id ?? a.recordId
-                      ? `${a.table_name ?? a.tableName} · ${a.record_id ?? a.recordId}`
-                      : a.table_name ?? a.tableName ?? "—"}
+                                       ? `${a.table_name ?? a.tableName} · ${a.record_id ?? a.recordId}`
+                    : a.user_name ?? a.userName ?? a.table_name ?? a.tableName ?? "Session"}
+
                   </span>
                   <span className="activity-time">
                     {timeAgo(a.occurred_at ?? a.occurredAt)}
