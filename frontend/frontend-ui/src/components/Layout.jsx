@@ -1,7 +1,7 @@
 import UserMenu from "./UserMenu";
 import { Link, useLocation } from "react-router-dom";
 import logo from "../assets/Dizon-Logo.png";
-
+import { getToken } from "../hooks/useAuth";
 
 const items = [
   { to: "/", label: "Dashboard", icon: "🏠" },
@@ -12,7 +12,13 @@ const items = [
 
 export default function Layout({ children }) {
   const { pathname } = useLocation();
-0
+  const loggedIn = Boolean(getToken());
+
+  // Walang sidebar kapag hindi naka-login (login at create account pages).
+  if (!loggedIn) {
+    return <main className="content content-full">{children}</main>;
+  }
+
   return (
     <div className="main-container">
       <aside className="sidebar">

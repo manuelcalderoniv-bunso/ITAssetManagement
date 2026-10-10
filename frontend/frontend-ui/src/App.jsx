@@ -5,35 +5,45 @@ import Assets from "./pages/Assets";
 import Assignments from "./pages/Assignments";
 import AuditLogs from "./pages/AuditLogs";
 import Login from "./pages/Login";
-import "./index.css";
 import RequireAuth from "./components/RequireAuth";
+import "./index.css";
 
-      <main className="content">
-        <Routes>
-          <Route
-            path="/*"
-            element={
-              <RequireAuth>
-                <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/assets" element={<Assets />} />
-                  <Route path="/assignments" element={<Assignments />} />
-                  <Route path="/auditlogs" element={<AuditLogs />} />
-                </Routes>
-              </RequireAuth>
-            }
-          />
-          <Route path="/login" element={<Login />} />
-        </Routes>
-      </main>
 function App() {
   return (
     <Layout>
       <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/assets" element={<Assets />} />
-        <Route path="/assignments" element={<Assignments />} />
-        <Route path="/auditlogs" element={<AuditLogs />} />
+        <Route
+          path="/"
+          element={
+            <RequireAuth>
+              <Dashboard />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/assets"
+          element={
+            <RequireAuth>
+              <Assets />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/assignments"
+          element={
+            <RequireAuth>
+              <Assignments />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/auditlogs"
+          element={
+            <RequireAuth>
+              <AuditLogs />
+            </RequireAuth>
+          }
+        />
         <Route path="/login" element={<Login />} />
       </Routes>
     </Layout>
