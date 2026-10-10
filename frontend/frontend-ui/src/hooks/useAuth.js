@@ -38,8 +38,8 @@ export function useAuth() {
       }
     }
 
-    clearSession();
-    bump((n) => n + 1); // pilitin ang re-render ng Layout at UserMenu
+        clearSession();
+    window.location.href = "/login";
     navigate("/login", { replace: true });
   };
 

@@ -882,3 +882,40 @@ select:focus {
   .assets-split { grid-template-columns: 1fr; }
   .ai-panel { position: static; max-height: none; }
 }
+/* Puwersahin ang asul na header sa LAHAT ng table na may col-head */
+table thead th.col-head .col-head-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: flex-start;
+  padding: 10px 12px;
+  background: var(--blue);
+  border: 0;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+table thead th.col-head .col-head-btn:hover {
+  background: var(--blue);
+  transform: none;
+  box-shadow: none;
+}
+
+table thead th.col-head .col-head-active .col-head-btn,
+table thead th.col-head-active .col-head-btn {
+  background: var(--blue);
+  color: #fff;
+}
+
+table thead th.col-head .col-caret {
+  font-size: 9px;
+  opacity: 0.75;
+  color: #fff;
+}

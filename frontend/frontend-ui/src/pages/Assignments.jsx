@@ -1,5 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { apiGet, apiSend } from "../api/client";
+import ColumnMenu from "../components/ColumnMenu";
+
+// Mga column ng assignment table.
+const COLUMNS = [
+  { key: "asset_tag", label: "Asset" },
+  { key: "employee_name", label: "Employee" },
+  { key: "department", label: "Department" },
+  { key: "assigned_at", label: "Assigned" },
+  { key: "status", label: "Status" },
+];
+
+const blankFilters = () => Object.fromEntries(COLUMNS.map((c) => [c.key, null]));
 
 export default function Assignments() {
   const [rows, setRows] = useState([]);
@@ -8,6 +20,9 @@ export default function Assignments() {
   const [department, setDepartment] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+
+  const [colFilters, setColFilters] = useState(blankFilters);
+  const [sort, setSort] = useState({ key: null, dir: null });
 
   const load = async () => {
     setLoading(true);
@@ -56,6 +71,65 @@ export default function Assignments() {
     }
   };
 
+  // Ang bawat row ay may computed na status at formatted date para sa filter.
+  const decorated = useMemo(
+    () =>
+      rows.map((r) => ({
+        ...r,
+        status: r.returned_at ? "Returned" : "Active",
+        assigned_at: r.assigned_at
+          ? new Date(r.assigned_at).toLocaleDateString()
+          : "",
+      })),
+    [rows]
+  );
+
+  // Natatanging halaga ng bawat column.
+  const distinct = useMemo(() => {
+    const out = {};
+    COLUMNS.forEach((c) => {
+      const set = new Set();
+      decorated.forEach((r) => {
+        const v = r[c.key];
+        set.add(v === null || v === undefined || v === "" ? "" : String(v));
+      });
+      out[c.key] = [...set].sort((x, y) => x.localeCompare(y));
+    });
+    return out;
+  }, [decorated]);
+
+  const filtered = useMemo(() => {
+    let out = decorated.filter((r) => {
+      for (const c of COLUMNS) {
+        const picked = colFilters[c.key];
+        if (!picked || !picked.length) continue;
+        const v = r[c.key];
+        const s = v === null || v === undefined || v === "" ? "" : String(v);
+        if (!picked.includes(s)) return false;
+      }
+      return true;
+    });
+
+    if (sort.key && sort.dir) {
+      out = [...out].sort((x, y) => {
+        const cmp = String(x[sort.key] ?? "").localeCompare(
+          String(y[sort.key] ?? "")
+        );
+        return sort.dir === "asc" ? cmp : -cmp;
+      });
+    }
+    return out;
+  }, [decorated, colFilters, sort]);
+
+  const activeCount = Object.values(colFilters).filter(
+    (v) => v && v.length
+  ).length;
+
+  const clearAll = () => {
+    setColFilters(blankFilters());
+    setSort({ key: null, dir: null });
+  };
+
   return (
     <>
       <h1>Assignments</h1>
@@ -79,7 +153,9 @@ export default function Assignments() {
             onChange={(e) => setDepartment(e.target.value)}
           />
           <button onClick={assign}>Assign</button>
-          <button className="btn-ghost" onClick={load}>Refresh</button>
+          <button className="btn-ghost" onClick={load}>
+            Refresh
+          </button>
         </div>
       </div>
 
@@ -90,6 +166,18 @@ export default function Assignments() {
         </div>
       )}
 
+      {activeCount > 0 || sort.key ? (
+        <div className="filter-bar">
+          <span className="filter-bar-label">
+            Active filters: {activeCount}
+            {sort.key ? ` · sorted by ${sort.key}` : ""}
+          </span>
+          <button className="btn-ghost btn-mini" onClick={clearAll}>
+            Clear all ✕
+          </button>
+        </div>
+      ) : null}
+
       <div className="panel">
         {loading ? (
           <div>
@@ -99,45 +187,76 @@ export default function Assignments() {
           </div>
         ) : rows.length === 0 ? (
           <div className="state-empty">Walang assignment sa ngayon.</div>
+        ) : filtered.length === 0 ? (
+          <div className="state-empty">
+            Walang assignment na tumutugma sa filter.
+          </div>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Asset</th>
-                <th>Employee</th>
-                <th>Department</th>
-                <th>Assigned</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.id}>
-                  <td><strong>{r.asset_tag}</strong></td>
-                  <td>{r.employee_name}</td>
-                  <td>{r.department}</td>
-                  <td>
-                    {r.assigned_at
-                      ? new Date(r.assigned_at).toLocaleDateString()
-                      : "—"}
-                  </td>
-                  <td>
-                    <span className={`badge ${r.returned_at ? "badge-gray" : "badge-green"}`}>
-                      {r.returned_at ? "Returned" : "Active"}
+          <div style={{ overflowX: "auto" }}>
+            <table>
+              <thead>
+                <tr>
+                  {COLUMNS.map((c) => (
+                    <ColumnMenu
+                      key={c.key}
+                      label={c.label}
+                      field={c.key}
+                      values={distinct[c.key] ?? []}
+                      selected={colFilters[c.key] ?? []}
+                      onSelect={(v) =>
+                        setColFilters((f) => ({ ...f, [c.key]: v }))
+                      }
+                      sortDir={sort.key === c.key ? sort.dir : null}
+                      onSort={(dir) => setSort({ key: c.key, dir })}
+                      rows={filtered}
+                    />
+                  ))}
+                  <th className="col-head">
+                    <span className="col-head-btn" style={{ cursor: "default" }}>
+                      <span>Actions</span>
                     </span>
-                  </td>
-                  <td>
-                    {!r.returned_at && (
-                      <button className="btn-danger" onClick={() => unassign(r.id)}>
-                        Unassign
-                      </button>
-                    )}
-                  </td>
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filtered.map((r) => (
+                  <tr key={r.id}>
+                    <td>
+                      <strong>{r.asset_tag}</strong>
+                    </td>
+                    <td>{r.employee_name}</td>
+                    <td>{r.department}</td>
+                    <td>{r.assigned_at || "—"}</td>
+                    <td>
+                      <span
+                        className={`badge ${
+                          r.status === "Returned" ? "badge-gray" : "badge-green"
+                        }`}
+                      >
+                        {r.status}
+                      </span>
+                    </td>
+                    <td>
+                      {!r.returned_at && (
+                        <button
+                          className="btn-danger"
+                          onClick={() => unassign(r.id)}
+                        >
+                          Unassign
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colSpan={COLUMNS.length}>Total</td>
+                  <td colSpan={2}>{filtered.length} rows</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         )}
       </div>
     </>

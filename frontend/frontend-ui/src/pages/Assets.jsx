@@ -280,8 +280,14 @@ export default function Assets() {
           rows={filtered}
         />
       ))}
-      <th />
+      
+     <th className="col-head">
+        <span className="col-head-btn" style={{ cursor: "default" }}>
+          <span>Actions</span>
+        </span>
+      </th>
     </tr>
+
   );
 
   return (
