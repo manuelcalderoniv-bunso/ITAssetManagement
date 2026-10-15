@@ -127,7 +127,8 @@ export default function Assets() {
       const set = new Set();
       assets.forEach((a) => {
         const v = a[c.key];
-        set.add(v === null || v === undefined || v === "" ? "" : String(v));
+        if (v !== null && v !== undefined && v !== "") set.add(String(v));
+
       });
       const arr = [...set];
       arr.sort((x, y) => {
@@ -155,10 +156,13 @@ export default function Assets() {
         const s = v === null || v === undefined || v === "" ? "" : String(v);
         if (!picked.includes(s)) return false;
       }
-      if (!q) return true;
-      return COLUMNS.map((c) => a[c.key]).some((v) =>
-        String(v ?? "").toLowerCase().includes(q)
-      );
+            if (!q) return true;
+      return COLUMNS.some((c) => {
+        const v = a[c.key];
+        const s = v === null || v === undefined || v === "" ? "" : String(v);
+        return s.toLowerCase().includes(q);
+      });
+
     });
 
     if (sort.key && sort.dir) {
@@ -213,8 +217,10 @@ export default function Assets() {
     setSearch("");
   };
 
-  const setCol = (key, value) =>
+  const setCol = (key, value) => {
     setColFilters((f) => ({ ...f, [key]: value }));
+    setSearch("");
+  };
 
   const sortBy = (key, dir) => setSort({ key, dir });
 
@@ -482,8 +488,8 @@ export default function Assets() {
               )}
             </div>
           ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table>
+           <div className="table-scroll">
+             <table>
                 <thead>{headRow}</thead>
                 <tbody>
                   {groups

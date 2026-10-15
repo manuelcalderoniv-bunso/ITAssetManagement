@@ -48,17 +48,24 @@ export default function ColumnMenu({
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const list = q ? values.filter((v) => v.toLowerCase().includes(q)) : values;
+    const list = q
+      ? values.filter((v) => String(v).toLowerCase().includes(q))
+      : values;
     return list;
   }, [values, query]);
 
-  const isChecked = (v) => selected.length === 0 || selected.includes(v);
+  // Walang laman na `selected` = lahat naka-check.
+  const allChecked = selected.length === 0;
+  const isChecked = (v) => allChecked || selected.includes(v);
 
   const toggleOne = (v) => {
-    const base = selected.length === 0 ? [...values] : [...selected];
+    const base = allChecked ? [...values] : [...selected];
     const next = base.includes(v) ? base.filter((x) => x !== v) : [...base, v];
     onSelect(next.length === values.length ? null : next);
   };
+
+  // (Select all): kapag lahat naka-check, i-clear; kung hindi, piliin lahat.
+  const toggleAll = () => onSelect(allChecked ? [...values].slice(0, 0) : null);
 
   const totals = useMemo(() => {
     if (!numeric || !field) return null;
@@ -84,13 +91,21 @@ export default function ColumnMenu({
     setQuery("");
   };
 
+  // Huminto ang click at mousedown sa pag-akyat sa <th> / header button.
+  const stop = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+  };
+
   return (
     <th className={`col-head${active ? " col-head-active" : ""}`}>
       <div className="col-menu-wrap" ref={wrapRef}>
         <button
           type="button"
           className="col-head-btn"
-          onClick={() => {
+          onMouseDown={stop}
+          onClick={(e) => {
+            e.stopPropagation();
             setOpen((o) => !o);
             setMode("root");
             setQuery("");
@@ -106,12 +121,19 @@ export default function ColumnMenu({
         </button>
 
         {open ? (
-          <div className="col-menu">
+          <div
+            className="col-menu"
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          >
             {mode === "root" ? (
               <>
                 <button
+                  type="button"
                   className="col-item"
-                  onClick={() => {
+                  onMouseDown={stop}
+                  onClick={(e) => {
+                    e.stopPropagation();
                     onSort(sortDir === "asc" ? "desc" : "asc");
                     reset();
                   }}
@@ -124,19 +146,46 @@ export default function ColumnMenu({
                       ? "Z to A"
                       : "A to Z"}
                 </button>
-                <button className="col-item" onClick={() => setMode("filter")}>
+                <button
+                  type="button"
+                  className="col-item"
+                  onMouseDown={stop}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMode("filter");
+                  }}
+                >
                   Filter by…
                 </button>
-                <button className="col-item" onClick={() => setMode("group")}>
+                <button
+                  type="button"
+                  className="col-item"
+                  onMouseDown={stop}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMode("group");
+                  }}
+                >
                   Group by {label}
                 </button>
-                <button className="col-item" onClick={() => setMode("totals")}>
+                <button
+                  type="button"
+                  className="col-item"
+                  onMouseDown={stop}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMode("totals");
+                  }}
+                >
                   Totals
                 </button>
                 {active ? (
                   <button
+                    type="button"
                     className="col-item col-item-danger"
-                    onClick={() => {
+                    onMouseDown={stop}
+                    onClick={(e) => {
+                      e.stopPropagation();
                       onSelect(null);
                       onSort(null);
                       reset();
@@ -152,48 +201,89 @@ export default function ColumnMenu({
               <>
                 <div className="col-menu-title">
                   Filter by ‘{label}’
-                  <button className="col-x" onClick={reset}>
+                  <button
+                    type="button"
+                    className="col-x"
+                    onMouseDown={stop}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      reset();
+                    }}
+                  >
                     ✕
                   </button>
                 </div>
+
                 <input
                   className="col-search"
                   placeholder="Search values…"
                   value={query}
+                  onMouseDown={(e) => e.stopPropagation()}
                   onChange={(e) => setQuery(e.target.value)}
                 />
+
                 <div className="col-list">
-                  <label className="col-check">
-                    <input
-                      type="checkbox"
-                      checked={selected.length === 0}
-                      onChange={() => onSelect(null)}
-                    />
-                    <span>
+                  {/* (Select all) */}
+                  <button
+                    type="button"
+                    className="col-check col-check-all"
+                    onMouseDown={stop}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleAll();
+                    }}
+                  >
+                    <span className={`col-box${allChecked ? " on" : ""}`}>
+                      {allChecked ? "✓" : ""}
+                    </span>
+                    <span className="col-check-label">
                       <em>(Select all)</em>
                     </span>
-                  </label>
+                  </button>
+
                   {shown.map((v) => (
-                    <label className="col-check" key={v}>
-                      <input
-                        type="checkbox"
-                        checked={isChecked(v)}
-                        onChange={() => toggleOne(v)}
-                      />
-                      <span>{v || "(Empty)"}</span>
-                    </label>
+                    <button
+                      type="button"
+                      className="col-check"
+                      key={v}
+                      onMouseDown={stop}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleOne(v);
+                      }}
+                    >
+                      <span className={`col-box${isChecked(v) ? " on" : ""}`}>
+                        {isChecked(v) ? "✓" : ""}
+                      </span>
+                      <span className="col-check-label">{v || "(Empty)"}</span>
+                    </button>
                   ))}
+
                   {shown.length === 0 ? (
                     <div className="col-empty">No values match.</div>
                   ) : null}
                 </div>
+
                 <div className="col-menu-foot">
-                  <button className="btn-ghost btn-mini" onClick={reset}>
+                  <button
+                    type="button"
+                    className="btn-ghost btn-mini"
+                    onMouseDown={stop}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      reset();
+                    }}
+                  >
                     Close
                   </button>
                   <button
+                    type="button"
                     className="btn-ghost btn-mini"
-                    onClick={() => onSelect(null)}
+                    onMouseDown={stop}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelect(null);
+                    }}
                   >
                     Clear
                   </button>
@@ -205,21 +295,33 @@ export default function ColumnMenu({
               <>
                 <div className="col-menu-title">
                   Group by ‘{label}’
-                  <button className="col-x" onClick={reset}>
+                  <button
+                    type="button"
+                    className="col-x"
+                    onMouseDown={stop}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      reset();
+                    }}
+                  >
                     ✕
                   </button>
                 </div>
-                <label className="col-check">
-                  <input
-                    type="checkbox"
-                    checked={groupBy}
-                    onChange={(e) => {
-                      onGroup(e.target.checked);
-                      reset();
-                    }}
-                  />
-                  <span>Group rows by {label}</span>
-                </label>
+                <button
+                  type="button"
+                  className="col-check"
+                  onMouseDown={stop}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onGroup(!groupBy);
+                    reset();
+                  }}
+                >
+                  <span className={`col-box${groupBy ? " on" : ""}`}>
+                    {groupBy ? "✓" : ""}
+                  </span>
+                  <span className="col-check-label">Group rows by {label}</span>
+                </button>
                 <div className="col-hint">
                   Kapag naka-on, pinagsasama ang magkatulad na halaga at may
                   bilang ng bawat grupo.
@@ -231,7 +333,15 @@ export default function ColumnMenu({
               <>
                 <div className="col-menu-title">
                   Totals — {label}
-                  <button className="col-x" onClick={reset}>
+                  <button
+                    type="button"
+                    className="col-x"
+                    onMouseDown={stop}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      reset();
+                    }}
+                  >
                     ✕
                   </button>
                 </div>
