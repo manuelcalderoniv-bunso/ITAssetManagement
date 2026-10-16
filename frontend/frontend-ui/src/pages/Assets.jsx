@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, Fragment } from "react";
 import ColumnMenu from "../components/ColumnMenu";
 import AiAssistant from "../components/AiAssistant";
 import { useVoiceSearch } from "../hooks/useVoiceSearch";
+import { useSearchParams } from "react-router-dom";
 import { learnFromAssets } from "../lib/assetKnowledge";
 import { downloadCsv } from "../lib/exportCsv";
 import { apiGet, apiSend, unwrapList } from "../api/client";
@@ -37,7 +38,7 @@ export default function Assets() {
   const [error, setError] = useState("");
   const [form, setForm] = useState(EMPTY);
   const [selected, setSelected] = useState(null);
-
+  const [params] = useSearchParams();
   const [colFilters, setColFilters] = useState(blankFilters);
   const [sort, setSort] = useState({ key: null, dir: null });
   const [groupKey, setGroupKey] = useState(null);
@@ -65,9 +66,17 @@ export default function Assets() {
     }
   };
 
-  useEffect(() => {
-    loadAssets();
-  }, []);
+    useEffect(() => {
+    const t = params.get("type");
+    const c = params.get("cat");
+    if (!t && !c) return;
+    setColFilters((f) => ({
+      ...f,
+      assetType: t ? [t] : null,
+      category: c ? [c] : null,
+    }));
+    setSearch("");
+  }, [params]);
 
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
