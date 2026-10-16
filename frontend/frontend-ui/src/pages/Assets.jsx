@@ -39,6 +39,8 @@ export default function Assets() {
   const [form, setForm] = useState(EMPTY);
   const [selected, setSelected] = useState(null);
   const [params] = useSearchParams();
+  const urlType = params.get("type");
+  const urlCat = params.get("cat");
   const [colFilters, setColFilters] = useState(blankFilters);
   const [sort, setSort] = useState({ key: null, dir: null });
   const [groupKey, setGroupKey] = useState(null);
@@ -66,7 +68,7 @@ export default function Assets() {
     }
   };
 
-    useEffect(() => {
+      useEffect(() => {
     const t = params.get("type");
     const c = params.get("cat");
     if (!t && !c) return;
@@ -77,6 +79,7 @@ export default function Assets() {
     }));
     setSearch("");
   }, [params]);
+
 
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -157,8 +160,13 @@ export default function Assets() {
     // Bantas sa dulo ng voice transcript ay tinatanggal (hal. "Lenovo.").
     const q = search.toLowerCase().replace(/[.,!?;:]+$/g, "").trim();
 
-    let rows = assets.filter((a) => {
+        let rows = assets.filter((a) => {
+      // Filter mula sa sidebar URL — direktang binabasa, walang race.
+      if (urlType && String(a.assetType ?? "") !== urlType) return false;
+      if (urlCat && String(a.category ?? "") !== urlCat) return false;
+
       for (const c of COLUMNS) {
+
         const picked = colFilters[c.key];
         if (!picked || !picked.length) continue;
         const v = a[c.key];
