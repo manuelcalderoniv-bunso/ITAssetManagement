@@ -148,6 +148,7 @@ export default function Assets() {
       for (const c of COLUMNS) {
         const picked = colFilters[c.key];
         if (!picked || !picked.length) continue;
+        if (picked.length === 1 && picked[0] === "__NONE__") return false;
         const v = a[c.key];
         const s = v === null || v === undefined || v === "" ? "" : String(v);
         if (!picked.includes(s)) return false;

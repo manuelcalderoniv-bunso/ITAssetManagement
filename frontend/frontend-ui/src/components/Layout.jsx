@@ -7,8 +7,9 @@ import { getToken } from "../hooks/useAuth";
 /**
  * Naka-groups na sidebar — tugma sa 43 assets ng Dizon Farms.
  *
- * Ang bawat sub-item ay may `field` na nagsasabi kung aling column ang
- * hahanapin: "assetType" (default) o "category".
+ * Ang bawat sub-item ay may `field`: "assetType" (default) o "category".
+ * Ang query ay itinatayo ng URLSearchParams, kaya tama ang encoding
+ * (hal. "IT Equipment" -> IT+Equipment) at tugma ang aktibong highlight.
  */
 const NAV = [
   { to: "/", label: "Dashboard", icon: "🏠" },
@@ -18,11 +19,11 @@ const NAV = [
     label: "Asset Management",
     icon: "💻",
     children: [
-      { to: "/assets", label: "All Assets" },
-      { to: "/assets?type=Laptop", label: "Laptops", field: "assetType" },
-      { to: "/assets?type=Desktop", label: "Desktops", field: "assetType" },
-      { to: "/assets?type=Monitor", label: "Monitors", field: "assetType" },
-      { to: "/assets?cat=IT Equipment", label: "IT Equipment", field: "category" },
+      { label: "All Assets", path: "/assets" },
+      { label: "Laptops", path: "/assets", field: "assetType", value: "Laptop" },
+      { label: "Desktops", path: "/assets", field: "assetType", value: "Desktop" },
+      { label: "Monitors", path: "/assets", field: "assetType", value: "Monitor" },
+      { label: "IT Equipment", path: "/assets", field: "category", value: "IT Equipment" },
     ],
   },
 
@@ -31,8 +32,8 @@ const NAV = [
     label: "Printer Inventory",
     icon: "🖨️",
     children: [
-      { to: "/assets?type=Printer", label: "All Printers", field: "assetType" },
-      { to: "/assets?cat=Printer", label: "By Category", field: "category" },
+      { label: "All Printers", path: "/assets", field: "assetType", value: "Printer" },
+      { label: "By Category", path: "/assets", field: "category", value: "Printer" },
     ],
   },
 
@@ -41,10 +42,10 @@ const NAV = [
     label: "Network & Infrastructure",
     icon: "🌐",
     children: [
-      { to: "/assets?type=Network Device", label: "Network Devices", field: "assetType" },
-      { to: "/assets?type=UPS", label: "UPS", field: "assetType" },
-      { to: "/assets?type=Accessory", label: "Accessories", field: "assetType" },
-      { to: "/assets?cat=Other", label: "Other Equipment", field: "category" },
+      { label: "Network Devices", path: "/assets", field: "assetType", value: "Network Device" },
+      { label: "UPS", path: "/assets", field: "assetType", value: "UPS" },
+      { label: "Accessories", path: "/assets", field: "assetType", value: "Accessory" },
+      { label: "Other Equipment", path: "/assets", field: "category", value: "Other" },
     ],
   },
 
@@ -53,38 +54,67 @@ const NAV = [
     label: "Movements",
     icon: "📦",
     children: [
-      { to: "/assignments", label: "Assignments" },
-      { to: "/assignments?view=receiving", label: "Receiving" },
-      { to: "/assignments?view=dispatch", label: "Dispatch" },
+      { label: "Assignments", path: "/assignments" },
+      { label: "Receiving", path: "/assignments", param: { view: "receiving" } },
+      { label: "Dispatch", path: "/assignments", param: { view: "dispatch" } },
     ],
   },
 
   { to: "/auditlogs", label: "Audit Logs", icon: "📝" },
 ];
 
+// Bumuo ng link para sa isang sub-item.
+function buildTo(c) {
+  if (!c.field || !c.value) {
+    if (!c.param) return c.path;
+    const q = new URLSearchParams(c.param).toString();
+    return `${c.path}?${q}`;
+  }
+  const key = c.field === "category" ? "cat" : "type";
+  const q = new URLSearchParams({ [key]: c.value }).toString();
+  return `${c.path}?${q}`;
+}
+
+// Ang aktibong query para sa bawat sub-item, para sa paghahambing.
+function buildQuery(c) {
+  const to = buildTo(c);
+  const i = to.indexOf("?");
+  return i === -1 ? "" : to.slice(i + 1);
+}
+
 export default function Layout({ children }) {
   const { pathname, search } = useLocation();
   const loggedIn = Boolean(getToken());
 
-  const matchChild = (c) => {
-    const [p, q] = c.to.split("?");
-    if (pathname !== p) return false;
-    if (!q) return !search;
-    return search.includes(q);
+  // Normalisahin: alisin ang unang "?" para pantay ang paghahambing.
+  const currentQuery = search.startsWith("?") ? search.slice(1) : search;
+
+  const isActive = (c) => {
+    if (pathname !== c.path) return false;
+    const q = buildQuery(c);
+    if (!q) return !currentQuery;
+    // Pareho ang parameter set, anuman ang pagkakasunod.
+    const a = new URLSearchParams(currentQuery);
+    const b = new URLSearchParams(q);
+    for (const [k, v] of b) {
+      if (a.get(k) !== v) return false;
+    }
+    return true;
   };
 
   const [openKeys, setOpenKeys] = useState(() => {
     const initial = {};
     NAV.forEach((it) => {
-      if (it.children && it.children.some(matchChild)) initial[it.key] = true;
+      if (it.children && it.children.some(isActive)) initial[it.key] = true;
     });
     return initial;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   });
 
   useEffect(() => {
     NAV.forEach((it) => {
       if (!it.children) return;
-      if (it.children.some(matchChild)) {
+      if (it.children.some(isActive)) {
         setOpenKeys((k) => ({ ...k, [it.key]: true }));
       }
     });
@@ -92,13 +122,6 @@ export default function Layout({ children }) {
   }, [pathname, search]);
 
   const toggle = (key) => setOpenKeys((k) => ({ ...k, [key]: !k[key] }));
-
-  const isActive = (to) => {
-    const [p, q] = to.split("?");
-    if (pathname !== p) return false;
-    if (!q) return !search;
-    return search.includes(q);
-  };
 
   if (!loggedIn) {
     return <main className="content content-full">{children}</main>;
@@ -118,7 +141,7 @@ export default function Layout({ children }) {
                 <Link
                   key={it.to}
                   to={it.to}
-                  className={`nav-item${isActive(it.to) ? " active" : ""}`}
+                  className={`nav-item${pathname === it.to ? " active" : ""}`}
                 >
                   <span className="nav-icon">{it.icon}</span>
                   <span className="nav-label">{it.label}</span>
@@ -127,7 +150,7 @@ export default function Layout({ children }) {
             }
 
             const open = !!openKeys[it.key];
-            const childActive = it.children.some((c) => isActive(c.to));
+            const childActive = it.children.some(isActive);
 
             return (
               <div className="nav-group" key={it.key}>
@@ -145,9 +168,9 @@ export default function Layout({ children }) {
                   <div className="nav-sub">
                     {it.children.map((c) => (
                       <Link
-                        key={c.to}
-                        to={c.to}
-                        className={`nav-subitem${isActive(c.to) ? " active" : ""}`}
+                        key={c.label}
+                        to={buildTo(c)}
+                        className={`nav-subitem${isActive(c) ? " active" : ""}`}
                       >
                         {c.label}
                       </Link>
