@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { apiGet, apiSend } from "../api/client";
 import ColumnMenu from "../components/ColumnMenu";
 
@@ -13,7 +14,25 @@ const COLUMNS = [
 
 const blankFilters = () => Object.fromEntries(COLUMNS.map((c) => [c.key, null]));
 
+// Ang ?view= sa URL ang nagsasabi kung aling set ang ipapakita.
+const VIEW_META = {
+  receiving: {
+    title: "Receiving",
+    sub: "Mga item na kasalukuyang nasa empleyado (hindi pa naibalik).",
+    match: (r) => !r.returned_at,
+  },
+  dispatch: {
+    title: "Dispatch",
+    sub: "Mga item na naibalik na (nasa inventory muli).",
+    match: (r) => !!r.returned_at,
+  },
+};
+
 export default function Assignments() {
+  const [params] = useSearchParams();
+  const view = params.get("view");
+  const meta = view ? VIEW_META[view] : null;
+
   const [rows, setRows] = useState([]);
   const [assetTag, setAssetTag] = useState("");
   const [employeeName, setEmployeeName] = useState("");
@@ -71,7 +90,7 @@ export default function Assignments() {
     }
   };
 
-  // Ang bawat row ay may computed na status at formatted date para sa filter.
+  // Idagdag ang computed na status at formatted na petsa para sa filter.
   const decorated = useMemo(
     () =>
       rows.map((r) => ({
@@ -84,25 +103,32 @@ export default function Assignments() {
     [rows]
   );
 
-  // Natatanging halaga ng bawat column.
+  // Ang base set: kung may ?view=, i-filter muna bago ang column filters.
+  const baseRows = useMemo(() => {
+    if (!meta) return decorated;
+    return decorated.filter(meta.match);
+  }, [decorated, meta]);
+
   const distinct = useMemo(() => {
     const out = {};
     COLUMNS.forEach((c) => {
       const set = new Set();
-      decorated.forEach((r) => {
+      baseRows.forEach((r) => {
         const v = r[c.key];
         set.add(v === null || v === undefined || v === "" ? "" : String(v));
       });
       out[c.key] = [...set].sort((x, y) => x.localeCompare(y));
     });
     return out;
-  }, [decorated]);
+  }, [baseRows]);
 
   const filtered = useMemo(() => {
-    let out = decorated.filter((r) => {
+    let out = baseRows.filter((r) => {
       for (const c of COLUMNS) {
         const picked = colFilters[c.key];
         if (!picked || !picked.length) continue;
+        // Sentinel: "__NONE__" lang = walang row na tugma.
+        if (picked.length === 1 && picked[0] === "__NONE__") return false;
         const v = r[c.key];
         const s = v === null || v === undefined || v === "" ? "" : String(v);
         if (!picked.includes(s)) return false;
@@ -119,10 +145,10 @@ export default function Assignments() {
       });
     }
     return out;
-  }, [decorated, colFilters, sort]);
+  }, [baseRows, colFilters, sort]);
 
   const activeCount = Object.values(colFilters).filter(
-    (v) => v && v.length
+    (v) => v && v.length && v[0] !== "__NONE__"
   ).length;
 
   const clearAll = () => {
@@ -130,9 +156,12 @@ export default function Assignments() {
     setSort({ key: null, dir: null });
   };
 
+  const statusBadge = (s) => (s === "Returned" ? "badge-gray" : "badge-green");
+
   return (
     <>
-      <h1>Assignments</h1>
+      <h1>{meta ? meta.title : "Assignments"}</h1>
+      {meta ? <p className="page-sub">{meta.sub}</p> : null}
 
       <div className="panel" style={{ marginBottom: 20 }}>
         <h3>New Assignment</h3>
@@ -185,14 +214,18 @@ export default function Assignments() {
               <div key={i} className="skeleton skeleton-line" />
             ))}
           </div>
-        ) : rows.length === 0 ? (
-          <div className="state-empty">Walang assignment sa ngayon.</div>
+        ) : baseRows.length === 0 ? (
+          <div className="state-empty">
+            {meta
+              ? `Walang ${meta.title.toLowerCase()} na record sa ngayon.`
+              : "Walang assignment sa ngayon."}
+          </div>
         ) : filtered.length === 0 ? (
           <div className="state-empty">
             Walang assignment na tumutugma sa filter.
           </div>
         ) : (
-          <div style={{ overflowX: "auto" }}>
+          <div className="table-scroll">
             <table>
               <thead>
                 <tr>
@@ -228,11 +261,7 @@ export default function Assignments() {
                     <td>{r.department}</td>
                     <td>{r.assigned_at || "—"}</td>
                     <td>
-                      <span
-                        className={`badge ${
-                          r.status === "Returned" ? "badge-gray" : "badge-green"
-                        }`}
-                      >
+                      <span className={`badge ${statusBadge(r.status)}`}>
                         {r.status}
                       </span>
                     </td>

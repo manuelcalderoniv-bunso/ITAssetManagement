@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useRef, useState, Fragment } from "react";
-import ColumnMenu from "../components/ColumnMenu";
-import AiAssistant from "../components/AiAssistant";
 import { useVoiceSearch } from "../hooks/useVoiceSearch";
-import { useSearchParams } from "react-router-dom";
 import { learnFromAssets } from "../lib/assetKnowledge";
+import AiAssistant from "../components/AiAssistant";
+import ColumnMenu from "../components/ColumnMenu";
 import { downloadCsv } from "../lib/exportCsv";
+import { useEffect, useMemo, useState } from "react";
 import { apiGet, apiSend, unwrapList } from "../api/client";
 
 const EMPTY = {
@@ -38,14 +37,10 @@ export default function Assets() {
   const [error, setError] = useState("");
   const [form, setForm] = useState(EMPTY);
   const [selected, setSelected] = useState(null);
-  const [params] = useSearchParams();
-  const urlType = params.get("type");
-  const urlCat = params.get("cat");
+
   const [colFilters, setColFilters] = useState(blankFilters);
   const [sort, setSort] = useState({ key: null, dir: null });
   const [groupKey, setGroupKey] = useState(null);
-
-  const fileInputRef = useRef(null);
 
   const voice = useVoiceSearch({
     lang: "en-PH",
@@ -68,21 +63,11 @@ export default function Assets() {
     }
   };
 
-      useEffect(() => {
-    const t = params.get("type");
-    const c = params.get("cat");
-    if (!t && !c) return;
-    setColFilters((f) => ({
-      ...f,
-      assetType: t ? [t] : null,
-      category: c ? [c] : null,
-    }));
-    setSearch("");
-  }, [params]);
+  useEffect(() => {
+    loadAssets();
+  }, []);
 
-
-  const handleChange = (e) =>
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   const addAsset = async () => {
     try {
@@ -139,8 +124,7 @@ export default function Assets() {
       const set = new Set();
       assets.forEach((a) => {
         const v = a[c.key];
-        if (v !== null && v !== undefined && v !== "") set.add(String(v));
-
+        set.add(v === null || v === undefined || v === "" ? "" : String(v));
       });
       const arr = [...set];
       arr.sort((x, y) => {
@@ -160,26 +144,18 @@ export default function Assets() {
     // Bantas sa dulo ng voice transcript ay tinatanggal (hal. "Lenovo.").
     const q = search.toLowerCase().replace(/[.,!?;:]+$/g, "").trim();
 
-        let rows = assets.filter((a) => {
-      // Filter mula sa sidebar URL — direktang binabasa, walang race.
-      if (urlType && String(a.assetType ?? "") !== urlType) return false;
-      if (urlCat && String(a.category ?? "") !== urlCat) return false;
-
+    let rows = assets.filter((a) => {
       for (const c of COLUMNS) {
-
         const picked = colFilters[c.key];
         if (!picked || !picked.length) continue;
         const v = a[c.key];
         const s = v === null || v === undefined || v === "" ? "" : String(v);
         if (!picked.includes(s)) return false;
       }
-            if (!q) return true;
-      return COLUMNS.some((c) => {
-        const v = a[c.key];
-        const s = v === null || v === undefined || v === "" ? "" : String(v);
-        return s.toLowerCase().includes(q);
-      });
-
+      if (!q) return true;
+      return COLUMNS.map((c) => a[c.key]).some((v) =>
+        String(v ?? "").toLowerCase().includes(q)
+      );
     });
 
     if (sort.key && sort.dir) {
@@ -203,8 +179,7 @@ export default function Assets() {
     const map = new Map();
     filtered.forEach((a) => {
       const v = a[groupKey];
-      const k =
-        v === null || v === undefined || v === "" ? "(Empty)" : String(v);
+      const k = v === null || v === undefined || v === "" ? "(Empty)" : String(v);
       if (!map.has(k)) map.set(k, []);
       map.get(k).push(a);
     });
@@ -234,10 +209,8 @@ export default function Assets() {
     setSearch("");
   };
 
-  const setCol = (key, value) => {
+  const setCol = (key, value) =>
     setColFilters((f) => ({ ...f, [key]: value }));
-    setSearch("");
-  };
 
   const sortBy = (key, dir) => setSort({ key, dir });
 
@@ -259,7 +232,9 @@ export default function Assets() {
         <span className={`badge ${statusBadge(a.status)}`}>{a.status}</span>
       </td>
       <td>{a.department ?? "—"}</td>
-      <td className="qty-cell">{a.quantity ?? 1}</td>
+      <td style={{ textAlign: "right", fontWeight: 600 }}>
+        {a.quantity ?? 1}
+      </td>
       <td>
         <div className="row-actions">
           <button
@@ -303,14 +278,8 @@ export default function Assets() {
           rows={filtered}
         />
       ))}
-      
-     <th className="col-head">
-        <span className="col-head-btn" style={{ cursor: "default" }}>
-          <span>Actions</span>
-        </span>
-      </th>
+      <ColumnMenu label="" values={[]} onSelect={() => {}} rows={filtered} />
     </tr>
-
   );
 
   return (
@@ -343,8 +312,10 @@ export default function Assets() {
 
         <button
           className="btn-ghost"
-          onClick={() => fileInputRef.current?.click()}
-          title="Import CSV - parser coming next"
+          onClick={() => {
+            const tag = fileInputRef.current;
+            if (tag) tag.click();
+          }}
         >
           ⬆ Import CSV
         </button>
@@ -364,8 +335,7 @@ export default function Assets() {
                 { key: "serialNumber", label: "Serial Number" },
                 { key: "status", label: "Status" },
                 { key: "department", label: "Department" },
-                { key: "quantity", label: "Qty", numeric: true },
-
+                { key: "quantity", label: "Qty" },
               ]
             )
           }
@@ -373,13 +343,6 @@ export default function Assets() {
           ⬇ Export CSV ({filtered.length})
         </button>
       </div>
-
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".csv"
-        style={{ display: "none" }}
-      />
 
       <div className="chip-row">
         {["Lenovo", "Dell", "HP", "Available", "Issued", "Maintenance"].map(
@@ -414,8 +377,8 @@ export default function Assets() {
         <div className="filter-bar">
           <span className="filter-bar-label">
             Active filters: {activeCount}
-            {groupKey ? ` · grouped by ${groupKey}` : ""}
-            {sort.key ? ` · sorted by ${sort.key}` : ""}
+            {groupKey ? " · grouped" : ""}
+            {sort.key ? " · sorted" : ""}
           </span>
           <button className="btn-ghost btn-mini" onClick={clearAll}>
             Clear all ✕
@@ -495,9 +458,7 @@ export default function Assets() {
               {assets.length > 0 && (
                 <>
                   Available manufacturers:{" "}
-                  {[
-                    ...new Set(assets.map((a) => a.manufacturer).filter(Boolean)),
-                  ]
+                  {[...new Set(assets.map((a) => a.manufacturer).filter(Boolean))]
                     .sort()
                     .join(", ")}
                   .
@@ -505,8 +466,8 @@ export default function Assets() {
               )}
             </div>
           ) : (
-           <div className="table-scroll">
-             <table>
+            <div style={{ overflowX: "auto" }}>
+              <table>
                 <thead>{headRow}</thead>
                 <tbody>
                   {groups
@@ -526,7 +487,9 @@ export default function Assets() {
                 <tfoot>
                   <tr>
                     <td colSpan={COLUMNS.length - 1}>Totals</td>
-                    <td className="qty-cell">{totalQty}</td>
+                    <td style={{ textAlign: "right", fontWeight: 700 }}>
+                      {totalQty}
+                    </td>
                     <td />
                   </tr>
                 </tfoot>
