@@ -144,11 +144,14 @@ export default function Assets() {
     // Bantas sa dulo ng voice transcript ay tinatanggal (hal. "Lenovo.").
     const q = search.toLowerCase().replace(/[.,!?;:]+$/g, "").trim();
 
-    let rows = assets.filter((a) => {
+        let rows = assets.filter((a) => {
       for (const c of COLUMNS) {
         const picked = colFilters[c.key];
         if (!picked || !picked.length) continue;
+        // (Select all) unchecked -> walang row
+        if (picked.length === 1 && picked[0] === "__NONE__") return false;
         const v = a[c.key];
+
         const s = v === null || v === undefined || v === "" ? "" : String(v);
         if (!picked.includes(s)) return false;
       }

@@ -3,18 +3,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 /**
  * Excel-style column menu.
  *
- * Props:
- *   label     - ang pangalan ng column na ipapakita sa header
- *   values    - array ng natatanging halaga (para sa checklist)
- *   selected  - array ng mga piniling halaga (walang laman = lahat)
- *   onSelect  - (array | null) => void   (null = i-clear ang filter ng column)
- *   sortDir   - "asc" | "desc" | null
- *   onSort    - (dir | null) => void
- *   groupBy   - boolean, kung ito ang aktibong group-by column
- *   onGroup   - (bool) => void
- *   numeric   - true para sa QTY (Totals: sum/avg/min/max)
- *   rows      - ang filtered na rows, para sa Totals
- *   field     - key ng column sa row object, para sa Totals
+ * `(Select all)` behaviour (simplified 2026-10-28):
+ *   - checked   = walang filter (lahat ng row ay lumalabas)
+ *   - unchecked = WALANG row (walang value na napili)
+ *   Isang click lang ang nag-toggle sa pagitan ng dalawa. Hindi na kailangang
+ *   mag-uncheck ng isa-isa.
  */
 export default function ColumnMenu({
   label,
@@ -30,7 +23,7 @@ export default function ColumnMenu({
   field,
 }) {
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState("root"); // root | filter | totals | group
+  const [mode, setMode] = useState("root");
   const [query, setQuery] = useState("");
   const wrapRef = useRef(null);
 
@@ -48,30 +41,40 @@ export default function ColumnMenu({
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const list = q
+    return q
       ? values.filter((v) => String(v).toLowerCase().includes(q))
       : values;
-    return list;
   }, [values, query]);
 
-  // Walang laman na `selected` = lahat naka-check.
+  // ── Estado ng checklist ────────────────────────────────────────────────
+  // `selected === []`          -> walang filter  (lahat naka-check)
+  // `selected === ["__NONE__"]` -> walang row     (walang naka-check)
+  // `selected === [...values]`  -> lahat naka-check
+  const noneChecked = selected.length === 1 && selected[0] === "__NONE__";
   const allChecked = selected.length === 0;
-  const isChecked = (v) => allChecked || selected.includes(v);
 
-  const toggleOne = (v) => {
-    const base = allChecked ? [...values] : [...selected];
-    const next = base.includes(v) ? base.filter((x) => x !== v) : [...base, v];
-    onSelect(next.length === values.length ? null : next);
+  const isChecked = (v) => {
+    if (allChecked) return true;
+    if (noneChecked) return false;
+    return selected.includes(v);
   };
 
-  // (Select all): kapag lahat naka-check, i-clear; kung hindi, piliin lahat.
-  const toggleAll = () => onSelect(allChecked ? [...values].slice(0, 0) : null);
+  /** Isang value: i-toggle. */
+  const toggleOne = (v) => {
+    // Kung "lahat" pa, simulan sa buong listahan.
+    const base = allChecked ? [...values] : noneChecked ? [] : [...selected];
+    const next = base.includes(v) ? base.filter((x) => x !== v) : [...base, v];
 
+    if (next.length === 0) return onSelect(["__NONE__"]);   // wala
+    if (next.length === values.length) return onSelect(null); // lahat
+    onSelect(next);
+  };
+
+  /** (Select all): checked -> wala. unchecked -> lahat. */
+  const toggleAll = () => onSelect(null);
   const totals = useMemo(() => {
     if (!numeric || !field) return null;
-    const nums = rows
-      .map((r) => Number(r[field]))
-      .filter((n) => Number.isFinite(n));
+    const nums = rows.map((r) => Number(r[field])).filter((n) => Number.isFinite(n));
     if (!nums.length) return null;
     const sum = nums.reduce((a, b) => a + b, 0);
     return {
@@ -91,11 +94,12 @@ export default function ColumnMenu({
     setQuery("");
   };
 
-  // Huminto ang click at mousedown sa pag-akyat sa <th> / header button.
   const stop = (e) => {
     e.stopPropagation();
     e.preventDefault();
   };
+
+  const badgeCount = noneChecked ? 0 : selected.length;
 
   return (
     <th className={`col-head${active ? " col-head-active" : ""}`}>
@@ -114,9 +118,7 @@ export default function ColumnMenu({
           <span>{label}</span>
           {sortDir === "asc" ? <span className="col-arrow">▲</span> : null}
           {sortDir === "desc" ? <span className="col-arrow">▼</span> : null}
-          {selected.length > 0 ? (
-            <span className="col-count">{selected.length}</span>
-          ) : null}
+          {badgeCount > 0 ? <span className="col-count">{badgeCount}</span> : null}
           <span className="col-caret">▾</span>
         </button>
 
@@ -223,7 +225,7 @@ export default function ColumnMenu({
                 />
 
                 <div className="col-list">
-                  {/* (Select all) */}
+                  {/* (Select all) — click toggles between lahat at wala */}
                   <button
                     type="button"
                     className="col-check col-check-all"
