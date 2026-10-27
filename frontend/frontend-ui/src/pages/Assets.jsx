@@ -4,7 +4,6 @@ import AiAssistant from "../components/AiAssistant";
 import ColumnMenu from "../components/ColumnMenu";
 import { downloadCsv } from "../lib/exportCsv";
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
 import { apiGet, apiSend, unwrapList } from "../api/client";
 
 const EMPTY = {
@@ -38,9 +37,7 @@ export default function Assets() {
   const [error, setError] = useState("");
   const [form, setForm] = useState(EMPTY);
   const [selected, setSelected] = useState(null);
-  const [params] = useSearchParams();
-  const urlType = params.get("type");
-  const urlCat = params.get("cat");
+
   const [colFilters, setColFilters] = useState(blankFilters);
   const [sort, setSort] = useState({ key: null, dir: null });
   const [groupKey, setGroupKey] = useState(null);
@@ -147,14 +144,10 @@ export default function Assets() {
     // Bantas sa dulo ng voice transcript ay tinatanggal (hal. "Lenovo.").
     const q = search.toLowerCase().replace(/[.,!?;:]+$/g, "").trim();
 
-        let rows = assets.filter((a) => {
-      if (urlType && String(a.assetType ?? "") !== urlType) return false;
-      if (urlCat && String(a.category ?? "") !== urlCat) return false;
-
+    let rows = assets.filter((a) => {
       for (const c of COLUMNS) {
         const picked = colFilters[c.key];
         if (!picked || !picked.length) continue;
-        if (picked.length === 1 && picked[0] === "__NONE__") return false;
         const v = a[c.key];
         const s = v === null || v === undefined || v === "" ? "" : String(v);
         if (!picked.includes(s)) return false;
