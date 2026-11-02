@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiSend } from "../api/client";
 
@@ -23,6 +24,7 @@ export function clearSession() {
 
 export function useAuth() {
   const navigate = useNavigate();
+  const [, bump] = useState(0);
 
   const signOut = async () => {
     const user = getUser();
@@ -36,7 +38,8 @@ export function useAuth() {
       }
     }
 
-    clearSession();
+        clearSession();
+    window.location.href = "/login";
     navigate("/login", { replace: true });
   };
 
