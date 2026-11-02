@@ -3,6 +3,7 @@ import { learnFromAssets } from "../lib/assetKnowledge";
 import AiAssistant from "../components/AiAssistant";
 import ColumnMenu from "../components/ColumnMenu";
 import { downloadCsv } from "../lib/exportCsv";
+import { useSearchParams } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { apiGet, apiSend, unwrapList } from "../api/client";
 
@@ -38,10 +39,13 @@ export default function Assets() {
   const [form, setForm] = useState(EMPTY);
   const [selected, setSelected] = useState(null);
 
+  const [params] = useSearchParams();
+  const urlType = params.get("type");
+  const urlCat = params.get("cat");
+  
   const [colFilters, setColFilters] = useState(blankFilters);
   const [sort, setSort] = useState({ key: null, dir: null });
   const [groupKey, setGroupKey] = useState(null);
-
   const voice = useVoiceSearch({
     lang: "en-PH",
     onResult: (text) => setSearch(text),
@@ -143,9 +147,13 @@ export default function Assets() {
   const filtered = useMemo(() => {
     // Bantas sa dulo ng voice transcript ay tinatanggal (hal. "Lenovo.").
     const q = search.toLowerCase().replace(/[.,!?;:]+$/g, "").trim();
+    let rows = assets.filter((a) => {
+      // Filter mula sa sidebar URL
+      if (urlType && String(a.assetType ?? "") !== urlType) return false;
+      if (urlCat && String(a.category ?? "") !== urlCat) return false;
 
-        let rows = assets.filter((a) => {
       for (const c of COLUMNS) {
+
         const picked = colFilters[c.key];
         if (!picked || !picked.length) continue;
         // (Select all) unchecked -> walang row

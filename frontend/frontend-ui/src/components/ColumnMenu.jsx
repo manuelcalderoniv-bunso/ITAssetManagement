@@ -71,7 +71,7 @@ export default function ColumnMenu({
   };
 
   /** (Select all): checked -> wala. unchecked -> lahat. */
-  const toggleAll = () => onSelect(null);
+  const toggleAll = () => onSelect(noneChecked ? null : ["__NONE__"]);
   const totals = useMemo(() => {
     if (!numeric || !field) return null;
     const nums = rows.map((r) => Number(r[field])).filter((n) => Number.isFinite(n));
@@ -86,7 +86,7 @@ export default function ColumnMenu({
     };
   }, [numeric, field, rows]);
 
-  const active = selected.length > 0 || sortDir ? true : false;
+  const active = selected.length > 0;
 
   const reset = () => {
     setOpen(false);

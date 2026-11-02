@@ -931,8 +931,8 @@ table thead th.col-head {
 }
 
 .col-head-active .col-head-btn {
-  background: var(--blue-dark);
-  box-shadow: inset 0 -3px 0 var(--gold);
+  background: var(--blue);
+  box-shadow: none;
 }
 
 .col-caret {
@@ -1382,3 +1382,42 @@ td.qty-cell {
 
 /* Ang user menu ay hindi dapat tumakip sa nav */
 .sidebar .nav-groups { margin-bottom: auto; }
+/* ══ Override: puting dropdown, asul lang ang check box ══ */
+.col-menu .col-check,
+.col-menu .col-check-all,
+.col-menu .col-item {
+  background: transparent !important;
+  color: #334155 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.col-menu .col-check:hover,
+.col-menu .col-check-all:hover {
+  background: #f1f5f9 !important;
+}
+
+.col-menu .col-box {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 4px;
+  background: #fff !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: transparent;
+}
+
+.col-menu .col-box.on {
+  background: var(--blue) !important;
+  border-color: var(--blue) !important;
+  color: #fff !important;
+}
+
+.col-menu .col-check-label {
+  flex: 1;
+  text-align: left;
+}
