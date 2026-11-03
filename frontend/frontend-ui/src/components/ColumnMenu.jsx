@@ -3,11 +3,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 /**
  * Excel-style column menu.
  *
- * `(Select all)` behaviour (simplified 2026-10-28):
- *   - checked   = walang filter (lahat ng row ay lumalabas)
- *   - unchecked = WALANG row (walang value na napili)
- *   Isang click lang ang nag-toggle sa pagitan ng dalawa. Hindi na kailangang
- *   mag-uncheck ng isa-isa.
+ * `(Select all)` behaviour (AYOS 2026-11-03):
+ *   - naka-check  = walang filter (lahat ng row ay lumalabas)
+ *   - hindi check = WALANG row (walang value na napili)
+ *   Isang click lang ang nag-toggle sa pagitan ng dalawa — katulad ng
+ *   Warranty Watch filter. Hindi na kailangang mag-uncheck ng isa-isa.
  */
 export default function ColumnMenu({
   label,
@@ -47,7 +47,7 @@ export default function ColumnMenu({
   }, [values, query]);
 
   // ── Estado ng checklist ────────────────────────────────────────────────
-  // `selected === []`          -> walang filter  (lahat naka-check)
+  // `selected === []`           -> walang filter  (lahat naka-check)
   // `selected === ["__NONE__"]` -> walang row     (walang naka-check)
   // `selected === [...values]`  -> lahat naka-check
   const noneChecked = selected.length === 1 && selected[0] === "__NONE__";
@@ -70,8 +70,13 @@ export default function ColumnMenu({
     onSelect(next);
   };
 
-  /** (Select all): checked -> wala. unchecked -> lahat. */
-  const toggleAll = () => onSelect(noneChecked ? null : ["__NONE__"]);
+  /**
+   * (Select all) — Excel-style toggle:
+   *   naka-check lahat  -> i-uncheck lahat  (0 row)
+   *   hindi check       -> i-check lahat    (lahat ng row)
+   */
+  const toggleAll = () => (allChecked ? onSelect(["__NONE__"]) : onSelect(null));
+
   const totals = useMemo(() => {
     if (!numeric || !field) return null;
     const nums = rows.map((r) => Number(r[field])).filter((n) => Number.isFinite(n));
@@ -233,11 +238,16 @@ export default function ColumnMenu({
                     onClick={(e) => {
                       e.stopPropagation();
                       toggleAll();
-                    }}
+                    }} 
                   >
-                    <span className={`col-box${noneChecked ? "" : " on"}`}>
-                      {noneChecked ? "" : "✓"}
+                    <span
+                      className={`col-box${
+                        allChecked ? " on" : noneChecked ? "" : " partial"
+                     }`}
+                    >
+                     {allChecked ? "✓" : noneChecked ? "" : "–"}
                     </span>
+
                     <span className="col-check-label">
                       <em>(Select all)</em>
                     </span>
@@ -322,7 +332,9 @@ export default function ColumnMenu({
                   <span className={`col-box${groupBy ? " on" : ""}`}>
                     {groupBy ? "✓" : ""}
                   </span>
-                  <span className="col-check-label">Group rows by {label}</span>
+                  <span className="col-check-label">
+                    Group rows by {label}
+                  </span>
                 </button>
                 <div className="col-hint">
                   Kapag naka-on, pinagsasama ang magkatulad na halaga at may
