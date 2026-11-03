@@ -235,8 +235,8 @@ export default function ColumnMenu({
                       toggleAll();
                     }}
                   >
-                    <span className={`col-box${allChecked ? " on" : ""}`}>
-                      {allChecked ? "✓" : ""}
+                    <span className={`col-box${noneChecked ? "" : " on"}`}>
+                      {noneChecked ? "" : "✓"}
                     </span>
                     <span className="col-check-label">
                       <em>(Select all)</em>

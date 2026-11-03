@@ -140,8 +140,8 @@ export default function Assets() {
     return out;
   }, [assets]);
 
-  const activeCount = Object.values(colFilters).filter(
-    (v) => v && v.length
+    const activeCount = Object.values(colFilters).filter(
+    (v) => v && v.length && !(v.length === 1 && v[0] === "__NONE__")
   ).length;
 
   const filtered = useMemo(() => {
@@ -149,8 +149,8 @@ export default function Assets() {
     const q = search.toLowerCase().replace(/[.,!?;:]+$/g, "").trim();
     let rows = assets.filter((a) => {
       // Filter mula sa sidebar URL
-      if (urlType && String(a.assetType ?? "") !== urlType) return false;
-      if (urlCat && String(a.category ?? "") !== urlCat) return false;
+            if (urlType && String(a.assetType ?? "").toLowerCase() !== urlType.toLowerCase()) return false;
+      if (urlCat && String(a.category ?? "").toLowerCase() !== urlCat.toLowerCase()) return false;
 
       for (const c of COLUMNS) {
 
