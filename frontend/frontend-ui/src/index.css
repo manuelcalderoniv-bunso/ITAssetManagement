@@ -1421,3 +1421,17 @@ td.qty-cell {
   flex: 1;
   text-align: left;
 }
+/* (Select all) — partial state (kalahati ang naka-check) */
+/* (Select all) — partial state (kalahati ang naka-check) */
+.col-menu .col-box.partial {
+  background: #94a3b8 !important;
+  border-color: #94a3b8 !important;
+  color: #fff !important;
+}
+
+.col-check-count {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}

@@ -42,7 +42,8 @@ export default function Assets() {
   const [params] = useSearchParams();
   const urlType = params.get("type");
   const urlCat = params.get("cat");
-  
+  // Ang "+" sa URL ay space (hal. "IT+Equipment" -> "IT Equipment")
+  const norm = (s) => String(s ?? "").replace(/\+/g, " ").trim().toLowerCase();
   const [colFilters, setColFilters] = useState(blankFilters);
   const [sort, setSort] = useState({ key: null, dir: null });
   const [groupKey, setGroupKey] = useState(null);
@@ -140,17 +141,16 @@ export default function Assets() {
     return out;
   }, [assets]);
 
-  const activeCount = Object.values(colFilters).filter(
-    (v) => v && v.length
+    const activeCount = Object.values(colFilters).filter(
+    (v) => v && v.length && !(v.length === 1 && v[0] === "__NONE__")
   ).length;
 
-  const filtered = useMemo(() => {
-    // Bantas sa dulo ng voice transcript ay tinatanggal (hal. "Lenovo.").
+    const filtered = useMemo(() => {
     const q = search.toLowerCase().replace(/[.,!?;:]+$/g, "").trim();
     let rows = assets.filter((a) => {
       // Filter mula sa sidebar URL
-      if (urlType && String(a.assetType ?? "") !== urlType) return false;
-      if (urlCat && String(a.category ?? "") !== urlCat) return false;
+      if (urlType && norm(a.assetType) !== norm(urlType)) return false;
+      if (urlCat && norm(a.category) !== norm(urlCat)) return false;
 
       for (const c of COLUMNS) {
 
