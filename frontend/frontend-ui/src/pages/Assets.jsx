@@ -1,10 +1,11 @@
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useVoiceSearch } from "../hooks/useVoiceSearch";
 import { learnFromAssets } from "../lib/assetKnowledge";
 import AiAssistant from "../components/AiAssistant";
 import ColumnMenu from "../components/ColumnMenu";
 import { downloadCsv } from "../lib/exportCsv";
-import { useSearchParams } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { daysUntil, formatDate, parseDate, statusOf } from "../lib/warranty";
 import { apiGet, apiSend, unwrapList } from "../api/client";
 
 const EMPTY = {
@@ -12,6 +13,7 @@ const EMPTY = {
   assetType: "",
   status: "Available",
   quantity: "1",
+  warrantyEnd: "",
 };
 
 // Lahat ng column na may sariling filter menu.
@@ -24,13 +26,32 @@ const COLUMNS = [
   { key: "serialNumber", label: "Serial" },
   { key: "status", label: "Status" },
   { key: "department", label: "Department" },
+  { key: "warrantyEnd", label: "Warranty End" },
   { key: "quantity", label: "Qty", numeric: true },
 ];
 
 const blankFilters = () =>
   Object.fromEntries(COLUMNS.map((c) => [c.key, null]));
 
+// Pantay na paghahambing: "+" -> space, walang puwang sa gilid, lowercase.
+const norm = (s) =>
+  String(s ?? "").replace(/\+/g, " ").trim().toLowerCase();
+
+// Halaga ng cell bilang string ("" kung wala).
+const cell = (v) => (v === null || v === undefined || v === "" ? "" : String(v));
+
+// Totoong filter lang ang may laman na hindi "__NONE__".
+const isRealFilter = (v) =>
+  Array.isArray(v) &&
+  v.length > 0 &&
+  !(v.length === 1 && v[0] === "__NONE__");
+
 export default function Assets() {
+  // Ang ?type= at ?cat= galing sa sidebar.
+  const [params, setParams] = useSearchParams();
+  const urlType = params.get("type") || "";
+  const urlCat = params.get("cat") || "";
+
   const [assets, setAssets] = useState([]);
   const [search, setSearch] = useState("");
   const [editingTag, setEditingTag] = useState(null);
@@ -38,15 +59,13 @@ export default function Assets() {
   const [error, setError] = useState("");
   const [form, setForm] = useState(EMPTY);
   const [selected, setSelected] = useState(null);
+  const [origWarranty, setOrigWarranty] = useState("");
 
-  const [params] = useSearchParams();
-  const urlType = params.get("type");
-  const urlCat = params.get("cat");
-  // Ang "+" sa URL ay space (hal. "IT+Equipment" -> "IT Equipment")
-  const norm = (s) => String(s ?? "").replace(/\+/g, " ").trim().toLowerCase();
   const [colFilters, setColFilters] = useState(blankFilters);
   const [sort, setSort] = useState({ key: null, dir: null });
   const [groupKey, setGroupKey] = useState(null);
+  const fileInputRef = useRef(null);
+
   const voice = useVoiceSearch({
     lang: "en-PH",
     onResult: (text) => setSearch(text),
@@ -55,8 +74,19 @@ export default function Assets() {
   const loadAssets = async () => {
     try {
       setLoading(true);
-      const data = await apiGet("/assets");
-      const list = unwrapList(data);
+      const [data, wdata] = await Promise.all([
+        apiGet("/assets"),
+        // Warranty dates come from their own endpoint; if it fails, just show "—".
+        apiGet("/dashboard/warranty-details").catch(() => []),
+      ]);
+      const wmap = new Map(
+        (Array.isArray(wdata) ? wdata : []).map((w) => [w.assetTag, w])
+      );
+      const list = unwrapList(data).map((a) => ({
+        ...a,
+        warrantyStart: wmap.get(a.assetTag)?.warrantyStart ?? "",
+        warrantyEnd: wmap.get(a.assetTag)?.warrantyEnd ?? "",
+      }));
       setAssets(list);
       learnFromAssets(list);
       window.__itamsAssets = list;
@@ -72,14 +102,26 @@ export default function Assets() {
     loadAssets();
   }, []);
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  // Kapag lumipat sa ibang sidebar link, burahin ang naiwang column filters.
+  useEffect(() => {
+    setColFilters(blankFilters());
+    setSort({ key: null, dir: null });
+    setGroupKey(null);
+  }, [urlType, urlCat]);
+
+  const handleChange = (e) =>
+    setForm({ ...form, [e.target.name]: e.target.value });
 
   const addAsset = async () => {
     try {
+      const { warrantyEnd, ...rest } = form;
       await apiSend("/assets", "POST", {
-        ...form,
+        ...rest,
         quantity: Number(form.quantity) || 1,
       });
+      if (warrantyEnd) {
+        await apiSend(`/assets/${form.assetTag}/warranty`, "PUT", { warrantyEnd });
+      }
       setForm(EMPTY);
       await loadAssets();
     } catch (err) {
@@ -94,6 +136,12 @@ export default function Assets() {
         status: form.status,
         quantity: Number(form.quantity) || 1,
       });
+      // Warranty has its own endpoint; only send it if it changed.
+      if (form.warrantyEnd !== origWarranty) {
+        await apiSend(`/assets/${editingTag}/warranty`, "PUT", {
+          warrantyEnd: form.warrantyEnd || null,
+        });
+      }
       setEditingTag(null);
       setForm(EMPTY);
       await loadAssets();
@@ -119,54 +167,50 @@ export default function Assets() {
       assetType: asset.assetType,
       status: asset.status,
       quantity: String(asset.quantity ?? 1),
+      warrantyEnd: asset.warrantyEnd || "",
     });
+    setOrigWarranty(asset.warrantyEnd || "");
   };
 
-  // Natatanging halaga ng bawat column, para sa checklist.
+  // 1) Ang saklaw ng sidebar link (?type= / ?cat=).
+  const scoped = useMemo(
+    () =>
+      assets.filter((a) => {
+        if (urlType && norm(a.assetType) !== norm(urlType)) return false;
+        if (urlCat && norm(a.category) !== norm(urlCat)) return false;
+        return true;
+      }),
+    [assets, urlType, urlCat]
+  );
+
+  // 2) Natatanging halaga ng bawat column (mula sa saklaw), para sa checklist.
   const distinct = useMemo(() => {
     const out = {};
     COLUMNS.forEach((c) => {
-      const set = new Set();
-      assets.forEach((a) => {
-        const v = a[c.key];
-        set.add(v === null || v === undefined || v === "" ? "" : String(v));
-      });
-      const arr = [...set];
-      arr.sort((x, y) => {
-        if (c.numeric) return Number(x) - Number(y);
-        return x.localeCompare(y);
-      });
+      const arr = [...new Set(scoped.map((a) => cell(a[c.key])))];
+      arr.sort((x, y) =>
+        c.numeric ? Number(x) - Number(y) : x.localeCompare(y)
+      );
       out[c.key] = arr;
     });
     return out;
-  }, [assets]);
+  }, [scoped]);
 
-    const activeCount = Object.values(colFilters).filter(
-    (v) => v && v.length && !(v.length === 1 && v[0] === "__NONE__")
-  ).length;
+  const activeCount = Object.values(colFilters).filter(isRealFilter).length;
 
-    const filtered = useMemo(() => {
+  // 3) Search + column filters + sort.
+  const filtered = useMemo(() => {
+    // Bantas sa dulo ng voice transcript ay tinatanggal (hal. "Lenovo.").
     const q = search.toLowerCase().replace(/[.,!?;:]+$/g, "").trim();
-    let rows = assets.filter((a) => {
-      // Filter mula sa sidebar URL
-      if (urlType && norm(a.assetType) !== norm(urlType)) return false;
-      if (urlCat && norm(a.category) !== norm(urlCat)) return false;
 
+    let rows = scoped.filter((a) => {
       for (const c of COLUMNS) {
-
         const picked = colFilters[c.key];
-        if (!picked || !picked.length) continue;
-        // (Select all) unchecked -> walang row
-        if (picked.length === 1 && picked[0] === "__NONE__") return false;
-        const v = a[c.key];
-
-        const s = v === null || v === undefined || v === "" ? "" : String(v);
-        if (!picked.includes(s)) return false;
+        if (!isRealFilter(picked)) continue;
+        if (!picked.includes(cell(a[c.key]))) return false;
       }
       if (!q) return true;
-      return COLUMNS.map((c) => a[c.key]).some((v) =>
-        String(v ?? "").toLowerCase().includes(q)
-      );
+      return COLUMNS.some((c) => cell(a[c.key]).toLowerCase().includes(q));
     });
 
     if (sort.key && sort.dir) {
@@ -174,23 +218,22 @@ export default function Assets() {
       rows = [...rows].sort((x, y) => {
         const a = x[sort.key];
         const b = y[sort.key];
-        let cmp;
-        if (col?.numeric) cmp = (Number(a) || 0) - (Number(b) || 0);
-        else cmp = String(a ?? "").localeCompare(String(b ?? ""));
+        const cmp = col?.numeric
+          ? (Number(a) || 0) - (Number(b) || 0)
+          : String(a ?? "").localeCompare(String(b ?? ""));
         return sort.dir === "asc" ? cmp : -cmp;
       });
     }
 
     return rows;
-  }, [assets, search, colFilters, sort]);
+  }, [scoped, search, colFilters, sort]);
 
   // Kung may group-by, hatiin ang rows sa mga grupo.
   const groups = useMemo(() => {
     if (!groupKey) return null;
     const map = new Map();
     filtered.forEach((a) => {
-      const v = a[groupKey];
-      const k = v === null || v === undefined || v === "" ? "(Empty)" : String(v);
+      const k = cell(a[groupKey]) || "(Empty)";
       if (!map.has(k)) map.set(k, []);
       map.get(k).push(a);
     });
@@ -213,17 +256,39 @@ export default function Assets() {
     return map[s] ?? "badge-gray";
   };
 
-  const clearAll = () => {
+  const clearColumns = () => {
     setColFilters(blankFilters());
     setSort({ key: null, dir: null });
     setGroupKey(null);
+  };
+
+  // Burahin lahat, pati ang search at ang ?type= / ?cat= sa URL.
+  const clearEverything = () => {
+    clearColumns();
     setSearch("");
+    setParams({});
   };
 
   const setCol = (key, value) =>
     setColFilters((f) => ({ ...f, [key]: value }));
 
   const sortBy = (key, dir) => setSort({ key, dir });
+
+  const scopeLabel = [
+    urlType ? `Type: ${urlType}` : null,
+    urlCat ? `Category: ${urlCat}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  // Warranty End cell: pula kung 30 araw o mas kaunti, amber kung 31-90, abo kung expired.
+  const warrantyCell = (v) => {
+    const d = parseDate(v);
+    if (!d) return "—";
+    const st = statusOf(daysUntil(d));
+    const cls = { urgent: "badge-red", soon: "badge-amber", expired: "badge-gray" }[st];
+    return cls ? <span className={`badge ${cls}`}>{formatDate(d)}</span> : formatDate(d);
+  };
 
   const renderRow = (a) => (
     <tr
@@ -243,6 +308,7 @@ export default function Assets() {
         <span className={`badge ${statusBadge(a.status)}`}>{a.status}</span>
       </td>
       <td>{a.department ?? "—"}</td>
+      <td>{warrantyCell(a.warrantyEnd)}</td>
       <td style={{ textAlign: "right", fontWeight: 600 }}>
         {a.quantity ?? 1}
       </td>
@@ -280,7 +346,7 @@ export default function Assets() {
           field={c.key}
           numeric={!!c.numeric}
           values={distinct[c.key] ?? []}
-          selected={colFilters[c.key] ?? []}
+          selected={colFilters[c.key] ?? null}
           onSelect={(v) => setCol(c.key, v)}
           sortDir={sort.key === c.key ? sort.dir : null}
           onSort={(dir) => sortBy(c.key, dir)}
@@ -323,10 +389,7 @@ export default function Assets() {
 
         <button
           className="btn-ghost"
-          onClick={() => {
-            const tag = fileInputRef.current;
-            if (tag) tag.click();
-          }}
+          onClick={() => fileInputRef.current?.click()}
         >
           ⬆ Import CSV
         </button>
@@ -346,6 +409,7 @@ export default function Assets() {
                 { key: "serialNumber", label: "Serial Number" },
                 { key: "status", label: "Status" },
                 { key: "department", label: "Department" },
+                { key: "warrantyEnd", label: "Warranty End" },
                 { key: "quantity", label: "Qty" },
               ]
             )
@@ -354,6 +418,18 @@ export default function Assets() {
           ⬇ Export CSV ({filtered.length})
         </button>
       </div>
+
+      {/* Nakatago: gagamitin ng CSV import kapag tapos na ang parser. */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".csv"
+        style={{ display: "none" }}
+        onChange={(e) => {
+          e.target.value = "";
+          alert("CSV import ay hindi pa tapos.");
+        }}
+      />
 
       <div className="chip-row">
         {["Lenovo", "Dell", "HP", "Available", "Issued", "Maintenance"].map(
@@ -384,6 +460,18 @@ export default function Assets() {
         </div>
       ) : null}
 
+      {scopeLabel ? (
+        <div className="filter-bar">
+          <span className="filter-bar-label">Showing {scopeLabel}</span>
+          <button
+            className="btn-ghost btn-mini"
+            onClick={() => setParams({})}
+          >
+            Show all assets ✕
+          </button>
+        </div>
+      ) : null}
+
       {activeCount > 0 || groupKey || sort.key ? (
         <div className="filter-bar">
           <span className="filter-bar-label">
@@ -391,7 +479,7 @@ export default function Assets() {
             {groupKey ? " · grouped" : ""}
             {sort.key ? " · sorted" : ""}
           </span>
-          <button className="btn-ghost btn-mini" onClick={clearAll}>
+          <button className="btn-ghost btn-mini" onClick={clearColumns}>
             Clear all ✕
           </button>
         </div>
@@ -429,6 +517,17 @@ export default function Assets() {
             <option>Retired</option>
             <option>Disposed</option>
           </select>
+          <label
+            style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "#64748b" }}
+          >
+            Warranty end
+            <input
+              name="warrantyEnd"
+              type="date"
+              value={form.warrantyEnd}
+              onChange={handleChange}
+            />
+          </label>
           {editingTag ? (
             <>
               <button onClick={updateAsset}>Update Asset</button>
@@ -465,16 +564,14 @@ export default function Assets() {
             </div>
           ) : filtered.length === 0 ? (
             <div className="state-empty">
-              No assets match “{search.trim()}”.{" "}
-              {assets.length > 0 && (
-                <>
-                  Available manufacturers:{" "}
-                  {[...new Set(assets.map((a) => a.manufacturer).filter(Boolean))]
-                    .sort()
-                    .join(", ")}
-                  .
-                </>
-              )}
+              {assets.length === 0
+                ? "Wala pang asset sa database."
+                : "Walang asset na tumutugma sa kasalukuyang filter."}{" "}
+              {assets.length > 0 ? (
+                <button className="btn-ghost btn-mini" onClick={clearEverything}>
+                  Clear all filters
+                </button>
+              ) : null}
             </div>
           ) : (
             <div style={{ overflowX: "auto" }}>
