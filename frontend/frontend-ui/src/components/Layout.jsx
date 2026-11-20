@@ -33,7 +33,7 @@ const NAV = [
     icon: "🖨️",
     children: [
       { label: "All Printers", path: "/assets", field: "assetType", value: "Printer" },
-      { label: "By Category", path: "/assets", field: "category", value: "Printer" },
+      { label: "By Category", path: "/assets", field: "category", value: "POS Thermal Printer" },
     ],
   },
 

@@ -3,6 +3,7 @@ import { apiGet, unwrap, unwrapList } from "../api/client";
 import StatCard from "../components/StatCard";
 import ChartPanel from "../components/ChartPanel";
 import ColumnMenu from "../components/ColumnMenu";
+import WarrantyReminder from "../components/WarrantyReminder";
 import { useNavigate } from "react-router-dom";
 
 const actionBadge = {
@@ -25,6 +26,20 @@ function timeAgo(iso) {
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h`;
   return `${Math.floor(hrs / 24)}d`;
+}
+
+// Bumuo ng label na walang "undefined".
+function activityLabel(a) {
+  const table =
+    a.table_name ??
+    a.tableName ??
+    Object.entries(a).find(([k]) => /(table|entity|resource)/i.test(k))?.[1];
+  const record = a.record_id ?? a.recordId;
+  const who = a.user_name ?? a.userName ?? a.user_email ?? a.userEmail ?? a.email;
+  const parts = [table, record].filter(
+    (v) => v !== null && v !== undefined && v !== ""
+  );
+  return parts.length ? parts.join(" · ") : who ?? "Session";
 }
 
 // Mga column ng Assignment History sa Dashboard.
@@ -201,11 +216,7 @@ export default function Dashboard() {
                   <span className={`badge ${actionBadge[a.action] ?? "badge-gray"}`}>
                     {a.action}
                   </span>
-                  <span className="activity-text">
-                    {a.record_id ?? a.recordId
-                      ? `${a.table_name ?? a.tableName} · ${a.record_id ?? a.recordId}`
-                      : a.user_name ?? a.userName ?? a.table_name ?? a.tableName ?? "Session"}
-                  </span>
+                  <span className="activity-text">{activityLabel(a)}</span>
                   <span className="activity-time">
                     {timeAgo(a.occurred_at ?? a.occurredAt)}
                   </span>
@@ -246,7 +257,7 @@ export default function Dashboard() {
                       label={c.label}
                       field={c.key}
                       values={assignDistinct[c.key] ?? []}
-                      selected={histFilters[c.key] ?? []}
+                      selected={histFilters[c.key] ?? null}
                       onSelect={(v) =>
                         setHistFilters((f) => ({ ...f, [c.key]: v }))
                       }
@@ -283,6 +294,8 @@ export default function Dashboard() {
       </div>
 
       <ChartPanel />
+
+      <WarrantyReminder />
 
       <div className="footer">
         IT Asset Management System · Dizon Farms Produce, Inc.

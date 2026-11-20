@@ -1,22 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 /**
- * Excel-style column menu — IT Asset Management (Dizon Farms Produce, Inc.)
+ * Excel-style column menu.
  *
- * `(Select all)` behaviour (AYOS 2026-11-03):
- *   - naka-check  = walang filter (lahat ng row ay lumalabas)
- *   - hindi check = WALANG row (walang value na napili)
- *
- * Isang click lang ang nag-toggle sa pagitan ng dalawa.
- *
- * ⚠ Ang `selected` ay MAAARING `null` (walang filter). Normalisahin
- *   ito sa `sel` — kung hindi, ang `null.length` ay mag-crash at ang
- *   `[] ?? []` ay hindi mag-trigger ng re-render.
+ * `(Select all)` behaviour (simplified 2026-10-28):
+ *   - checked   = walang filter (lahat ng row ay lumalabas)
+ *   - unchecked = WALANG row (walang value na napili)
+ *   Isang click lang ang nag-toggle sa pagitan ng dalawa. Hindi na kailangang
+ *   mag-uncheck ng isa-isa.
  */
 export default function ColumnMenu({
   label,
   values = [],
-  selected,
+  selected: selectedProp = null,
   onSelect,
   sortDir = null,
   onSort,
@@ -29,11 +25,12 @@ export default function ColumnMenu({
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState("root");
   const [query, setQuery] = useState("");
+  // Lokal lang: "walang naka-check" sa checklist, pero WALANG filter na ipinapadala sa table.
+  const [cleared, setCleared] = useState(false);
   const wrapRef = useRef(null);
 
-  // Ang parent ay maaaring magpasa ng null (walang filter) o ["__NONE__"].
-  // Normalisahin sa array para hindi masira ang .length / .includes.
-  const sel = Array.isArray(selected) ? selected : [];
+  // Laging array, kahit null ang ipinasa ng page.
+  const selected = Array.isArray(selectedProp) ? selectedProp : [];
 
   useEffect(() => {
     if (!open) return;
@@ -55,57 +52,59 @@ export default function ColumnMenu({
   }, [values, query]);
 
   // ── Estado ng checklist ────────────────────────────────────────────────
-  // `sel === []`           -> walang filter  (lahat naka-check)
-  // `sel === ["__NONE__"]` -> walang row     (walang naka-check)
-  // `sel === [...values]`  -> lahat naka-check
-  const noneChecked = sel.length === 1 && sel[0] === "__NONE__";
-  const allChecked = sel.length === 0;
+  // `selected === []`          -> walang filter  (lahat naka-check)
+  // `selected === ["__NONE__"]` -> walang row     (walang naka-check)
+  // `selected === [...values]`  -> lahat naka-check
+  const legacyNone = selected.length === 1 && selected[0] === "__NONE__";
+  const noneChecked = legacyNone || (cleared && selected.length === 0);
+  const allChecked = !noneChecked && selected.length === 0;
 
-  const isChecked = (v) => {
-    if (allChecked) return true;
-    if (noneChecked) return false;
-    return sel.includes(v);
-  };
-
-  /** Ilan sa mga value ang naka-check ngayon. */
+  // Ilang value ang naka-check ngayon (para sa Excel-style na partial state).
   const checkedCount = allChecked
     ? values.length
     : noneChecked
       ? 0
-      : sel.filter((v) => values.includes(v)).length;
+      : selected.length;
+  const partial = checkedCount > 0 && checkedCount < values.length;
 
-  /** Partial = may naka-check ngunit hindi lahat. */
-  const isPartial = !allChecked && !noneChecked && checkedCount > 0;
-
-  /**
-   * (Select all) — simpleng toggle:
-   *   may naka-check pa     -> i-uncheck lahat (0 row)
-   *   wala nang naka-check  -> i-check lahat  (lahat ng row)
-   *
-   * Nakabase sa `checkedCount`, kaya gumagana kahit partial ang
-   * pagka-check — isang click lang pabalik sa lahat.
-   */
-  const toggleAll = () => {
-    if (checkedCount > 0) onSelect(["__NONE__"]);
-    else onSelect(null);
+  const isChecked = (v) => {
+    if (allChecked) return true;
+    if (noneChecked) return false;
+    return selected.includes(v);
   };
 
   /** Isang value: i-toggle. */
   const toggleOne = (v) => {
     // Kung "lahat" pa, simulan sa buong listahan.
-    const base = allChecked ? [...values] : noneChecked ? [] : [...sel];
+    const base = allChecked ? [...values] : noneChecked ? [] : [...selected];
     const next = base.includes(v) ? base.filter((x) => x !== v) : [...base, v];
 
-    if (next.length === 0) return onSelect(["__NONE__"]); // wala
+    if (next.length === 0) {            // wala nang naka-check: walang filter
+      setCleared(true);
+      return onSelect(null);
+    }
+    setCleared(false);
     if (next.length === values.length) return onSelect(null); // lahat
     onSelect(next);
   };
 
+  /**
+   * (Select all): kung may naka-check pa kahit isa -> i-uncheck lahat.
+   * Kung wala nang naka-check -> ibalik lahat.
+   */
+  const toggleAll = () => {
+    setCleared(checkedCount > 0); // i-uncheck lahat, o ibalik lahat
+    onSelect(null);               // hindi kailanman magfi-filter ng 0 row
+  };
+
+  const clearSelection = () => {
+    setCleared(false);
+    onSelect(null);
+  };
+
   const totals = useMemo(() => {
     if (!numeric || !field) return null;
-    const nums = rows
-      .map((r) => Number(r[field]))
-      .filter((n) => Number.isFinite(n));
+    const nums = rows.map((r) => Number(r[field])).filter((n) => Number.isFinite(n));
     if (!nums.length) return null;
     const sum = nums.reduce((a, b) => a + b, 0);
     return {
@@ -117,7 +116,8 @@ export default function ColumnMenu({
     };
   }, [numeric, field, rows]);
 
-  const active = sel.length > 0;
+  // Ang header ay naka-highlight lang kapag may totoong filter.
+  const active = !noneChecked && selected.length > 0;
 
   const reset = () => {
     setOpen(false);
@@ -130,7 +130,7 @@ export default function ColumnMenu({
     e.preventDefault();
   };
 
-  const badgeCount = noneChecked ? 0 : checkedCount;
+  const badgeCount = noneChecked ? 0 : selected.length;
 
   return (
     <th className={`col-head${active ? " col-head-active" : ""}`}>
@@ -212,14 +212,14 @@ export default function ColumnMenu({
                 >
                   Totals
                 </button>
-                {active ? (
+                {active || sortDir ? (
                   <button
                     type="button"
                     className="col-item col-item-danger"
                     onMouseDown={stop}
                     onClick={(e) => {
                       e.stopPropagation();
-                      onSelect(null);
+                      clearSelection();
                       onSort(null);
                       reset();
                     }}
@@ -256,7 +256,7 @@ export default function ColumnMenu({
                 />
 
                 <div className="col-list">
-                  {/* (Select all) — isang click: lahat <-> wala */}
+                  {/* (Select all) — click toggles between lahat at wala */}
                   <button
                     type="button"
                     className="col-check col-check-all"
@@ -267,11 +267,9 @@ export default function ColumnMenu({
                     }}
                   >
                     <span
-                      className={`col-box${
-                        isPartial ? " partial" : allChecked ? " on" : ""
-                      }`}
+                      className={`col-box${allChecked ? " on" : partial ? " partial" : ""}`}
                     >
-                      {isPartial ? "–" : allChecked ? "✓" : ""}
+                      {allChecked ? "✓" : partial ? "–" : ""}
                     </span>
                     <span className="col-check-label">
                       <em>(Select all)</em>
@@ -322,7 +320,7 @@ export default function ColumnMenu({
                     onMouseDown={stop}
                     onClick={(e) => {
                       e.stopPropagation();
-                      onSelect(null);
+                      clearSelection();
                     }}
                   >
                     Clear
@@ -360,9 +358,7 @@ export default function ColumnMenu({
                   <span className={`col-box${groupBy ? " on" : ""}`}>
                     {groupBy ? "✓" : ""}
                   </span>
-                  <span className="col-check-label">
-                    Group rows by {label}
-                  </span>
+                  <span className="col-check-label">Group rows by {label}</span>
                 </button>
                 <div className="col-hint">
                   Kapag naka-on, pinagsasama ang magkatulad na halaga at may
