@@ -2,14 +2,13 @@ import express from "express";
 import cors from "cors";
 import swaggerUi from "swagger-ui-express";
 import swaggerJSDoc from "swagger-jsdoc";
-
+import warrantyRoutes from "./routes/warrantyRoutes";
 import assetRoutes from "./routes/assetRoutes";
 import authRoutes from "./routes/authRoutes";
 import auditRoutes from "./routes/auditRoutes";
 import dashboardRoutes from "./routes/dashboardRoutes";
 
 const app = express();
-
 app.use(cors());
 app.use(express.json());
 
@@ -31,5 +30,5 @@ app.use("/api", assetRoutes);
 app.use("/api", authRoutes);
 app.use("/api", auditRoutes);
 app.use("/api", dashboardRoutes);
-
+app.use("/api", warrantyRoutes);
 export default app;
