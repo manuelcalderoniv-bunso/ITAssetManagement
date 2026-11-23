@@ -4,6 +4,11 @@ import StatCard from "../components/StatCard";
 import ChartPanel from "../components/ChartPanel";
 import ColumnMenu from "../components/ColumnMenu";
 import WarrantyReminder from "../components/WarrantyReminder";
+import LicenseWatch from "../components/LicenseWatch";
+import CloudStorageHealth from "../components/CloudStorageHealth";
+import StorageAlerts from "../components/StorageAlerts";
+import StorageWatch from "../components/StorageWatch";
+import { useStorage } from "../hooks/useStorage";
 import { useNavigate } from "react-router-dom";
 
 const actionBadge = {
@@ -59,6 +64,7 @@ export default function Dashboard() {
   const [history, setHistory] = useState([]);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const storage = useStorage(); // isang fetch para sa lahat ng storage widget
 
   // Assignment History: filter + sort state.
   const [histFilters, setHistFilters] = useState(() => blankFilters(ASSIGN_COLS));
@@ -205,6 +211,11 @@ export default function Dashboard() {
       </div>
 
       <div className="section">
+        <CloudStorageHealth storage={storage} />
+        <StorageAlerts storage={storage} />
+      </div>
+
+      <div className="section">
         <div className="panel fade-up">
           <h3>Recent Activities</h3>
           {activities.length === 0 ? (
@@ -294,6 +305,14 @@ export default function Dashboard() {
       </div>
 
       <ChartPanel />
+
+      <div className="section">
+        <StorageWatch storage={storage} />
+      </div>
+
+      <div className="section">
+        <LicenseWatch />
+      </div>
 
       <WarrantyReminder />
 

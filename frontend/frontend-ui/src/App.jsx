@@ -3,6 +3,8 @@ import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import Assets from "./pages/Assets";
 import Assignments from "./pages/Assignments";
+import Licenses from "./pages/Licenses";
+import Storage from "./pages/Storage";
 import AuditLogs from "./pages/AuditLogs";
 import Login from "./pages/Login";
 import RequireAuth from "./components/RequireAuth";
@@ -33,6 +35,22 @@ function App() {
           element={
             <RequireAuth>
               <Assignments />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/licenses"
+          element={
+            <RequireAuth>
+              <Licenses />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/storage"
+          element={
+            <RequireAuth>
+              <Storage />
             </RequireAuth>
           }
         />

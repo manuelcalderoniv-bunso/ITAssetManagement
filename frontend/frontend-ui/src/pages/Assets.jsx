@@ -14,7 +14,23 @@ const EMPTY = {
   status: "Available",
   quantity: "1",
   warrantyEnd: "",
+  category: "",
+  manufacturer: "",
+  model: "",
+  serialNumber: "",
 };
+
+// Mga mungkahi sa Asset Type (pwedeng mag-type ng iba).
+const ASSET_TYPES = [
+  "Laptop",
+  "Desktop",
+  "Tablet",
+  "Monitor",
+  "Printer",
+  "Network Device",
+  "UPS",
+  "Accessory",
+];
 
 // Lahat ng column na may sariling filter menu.
 const COLUMNS = [
@@ -84,6 +100,7 @@ export default function Assets() {
       );
       const list = unwrapList(data).map((a) => ({
         ...a,
+        quantity: a.quantity ?? 1,
         warrantyStart: wmap.get(a.assetTag)?.warrantyStart ?? "",
         warrantyEnd: wmap.get(a.assetTag)?.warrantyEnd ?? "",
       }));
@@ -113,6 +130,20 @@ export default function Assets() {
     setForm({ ...form, [e.target.name]: e.target.value });
 
   const addAsset = async () => {
+    // Kailangan ng backend ang lahat ng ito (Asset entity validation).
+    if (
+      !form.assetTag.trim() ||
+      !form.assetType.trim() ||
+      !form.category.trim() ||
+      !form.manufacturer.trim() ||
+      !form.model.trim() ||
+      !form.serialNumber.trim()
+    ) {
+      setError(
+        "Asset Tag, Type, Category, Manufacturer, Model and Serial Number are required."
+      );
+      return;
+    }
     try {
       const { warrantyEnd, ...rest } = form;
       await apiSend("/assets", "POST", {
@@ -163,6 +194,7 @@ export default function Assets() {
   const editAsset = (asset) => {
     setEditingTag(asset.assetTag);
     setForm({
+      ...EMPTY,
       assetTag: asset.assetTag,
       assetType: asset.assetType,
       status: asset.status,
@@ -497,10 +529,56 @@ export default function Assets() {
           />
           <input
             name="assetType"
-            placeholder="Asset Type (e.g. Laptop)"
+            list="asset-types"
+            placeholder="Asset Type (e.g. Tablet)"
             value={form.assetType}
             onChange={handleChange}
           />
+          <datalist id="asset-types">
+            {ASSET_TYPES.map((t) => (
+              <option key={t} value={t} />
+            ))}
+          </datalist>
+          {!editingTag ? (
+            <>
+              <input
+                name="category"
+                list="asset-categories"
+                placeholder="Category"
+                value={form.category}
+                onChange={handleChange}
+              />
+              <input
+                name="manufacturer"
+                list="asset-manufacturers"
+                placeholder="Manufacturer"
+                value={form.manufacturer}
+                onChange={handleChange}
+              />
+              <input
+                name="model"
+                placeholder="Model"
+                value={form.model}
+                onChange={handleChange}
+              />
+              <input
+                name="serialNumber"
+                placeholder="Serial Number"
+                value={form.serialNumber}
+                onChange={handleChange}
+              />
+              <datalist id="asset-categories">
+                {distinct.category.filter(Boolean).map((v) => (
+                  <option key={v} value={v} />
+                ))}
+              </datalist>
+              <datalist id="asset-manufacturers">
+                {distinct.manufacturer.filter(Boolean).map((v) => (
+                  <option key={v} value={v} />
+                ))}
+              </datalist>
+            </>
+          ) : null}
           <input
             name="quantity"
             type="number"
