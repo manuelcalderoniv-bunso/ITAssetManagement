@@ -7,6 +7,8 @@ import assetRoutes from "./routes/assetRoutes";
 import authRoutes from "./routes/authRoutes";
 import auditRoutes from "./routes/auditRoutes";
 import dashboardRoutes from "./routes/dashboardRoutes";
+import licenseRoutes from "./routes/licenseRoutes";
+import storageRoutes from "./routes/storageRoutes";
 
 const app = express();
 app.use(cors());
@@ -31,4 +33,6 @@ app.use("/api", authRoutes);
 app.use("/api", auditRoutes);
 app.use("/api", dashboardRoutes);
 app.use("/api", warrantyRoutes);
+app.use("/api", licenseRoutes);
+app.use("/api", storageRoutes);
 export default app;

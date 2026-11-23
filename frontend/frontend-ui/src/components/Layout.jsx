@@ -23,6 +23,7 @@ const NAV = [
       { label: "Laptops", path: "/assets", field: "assetType", value: "Laptop" },
       { label: "Desktops", path: "/assets", field: "assetType", value: "Desktop" },
       { label: "Monitors", path: "/assets", field: "assetType", value: "Monitor" },
+      { label: "Tablets", path: "/assets", field: "assetType", value: "Tablet" },
       { label: "IT Equipment", path: "/assets", field: "category", value: "IT Equipment" },
     ],
   },
@@ -46,6 +47,29 @@ const NAV = [
       { label: "UPS", path: "/assets", field: "assetType", value: "UPS" },
       { label: "Accessories", path: "/assets", field: "assetType", value: "Accessory" },
       { label: "Other Equipment", path: "/assets", field: "category", value: "Other" },
+    ],
+  },
+
+  {
+    key: "storage",
+    label: "Cloud & Storage",
+    icon: "☁️",
+    children: [
+      { label: "Overview", path: "/storage" },
+      { label: "Alerts", path: "/storage", param: { view: "alerts" } },
+    ],
+  },
+
+  {
+    key: "licenses",
+    label: "License Inventory",
+    icon: "🔑",
+    children: [
+      { label: "All Licenses", path: "/licenses" },
+      { label: "MS365 Standard", path: "/licenses", param: { product: "MS365" } },
+      { label: "Office 2016", path: "/licenses", param: { product: "Office 2016" } },
+      { label: "Palo Alto", path: "/licenses", param: { product: "Palo Alto" } },
+      { label: "Omada", path: "/licenses", param: { product: "Omada" } },
     ],
   },
 
