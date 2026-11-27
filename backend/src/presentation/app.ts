@@ -9,7 +9,8 @@ import auditRoutes from "./routes/auditRoutes";
 import dashboardRoutes from "./routes/dashboardRoutes";
 import licenseRoutes from "./routes/licenseRoutes";
 import storageRoutes from "./routes/storageRoutes";
-
+import spareRoutes from "./routes/spareRoutes";
+import procurementRoutes from "./routes/procurementRoutes";
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -35,4 +36,6 @@ app.use("/api", dashboardRoutes);
 app.use("/api", warrantyRoutes);
 app.use("/api", licenseRoutes);
 app.use("/api", storageRoutes);
+app.use("/api", spareRoutes);
+app.use("/api", procurementRoutes);
 export default app;

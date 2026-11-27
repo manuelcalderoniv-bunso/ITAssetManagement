@@ -1,3 +1,4 @@
+import PrlAnalytics from "../components/PrlAnalytics";
 import { useEffect, useMemo, useState } from "react";
 import { apiGet, unwrap, unwrapList } from "../api/client";
 import StatCard from "../components/StatCard";
@@ -9,6 +10,9 @@ import CloudStorageHealth from "../components/CloudStorageHealth";
 import StorageAlerts from "../components/StorageAlerts";
 import StorageWatch from "../components/StorageWatch";
 import { useStorage } from "../hooks/useStorage";
+import WelcomeBanner from "../components/WelcomeBanner";
+import AssetStatusPanel from "../components/AssetStatusPanel";
+import SpareStockWatch from "../components/SpareStockWatch";
 import { useNavigate } from "react-router-dom";
 
 const actionBadge = {
@@ -176,8 +180,7 @@ export default function Dashboard() {
 
   return (
     <>
-      <h1 className="fade-up">IT Asset Management System</h1>
-      <p className="fade-up">Dizon Farms Produce, Inc.</p>
+      <WelcomeBanner />
 
       <div className="cards">
         <StatCard
@@ -213,6 +216,15 @@ export default function Dashboard() {
       <div className="section">
         <CloudStorageHealth storage={storage} />
         <StorageAlerts storage={storage} />
+      </div>
+
+      <div className="section">
+        <AssetStatusPanel />
+        <SpareStockWatch />
+      </div>
+
+      <div className="section">
+        <PrlAnalytics />
       </div>
 
       <div className="section">
@@ -315,6 +327,8 @@ export default function Dashboard() {
       </div>
 
       <WarrantyReminder />
+
+      <PrlAnalytics />
 
       <div className="footer">
         IT Asset Management System · Dizon Farms Produce, Inc.

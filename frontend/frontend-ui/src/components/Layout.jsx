@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import UserMenu from "./UserMenu";
 import logo from "../assets/Dizon-Logo.png";
-import { getToken } from "../hooks/useAuth";
+import { getToken, getUser } from "../hooks/useAuth";
+import { filterNavForRole } from "../utils/roles";
+import NotificationBell from "./NotificationBell";
+import QuickSearch from "./QuickSearch";
 
 /**
  * Naka-groups na sidebar — tugma sa 43 assets ng Dizon Farms.
@@ -51,6 +54,17 @@ const NAV = [
   },
 
   {
+    key: "spare",
+    label: "Spare Inventory",
+    icon: "🧰",
+    children: [
+      { label: "Overview", path: "/spare" },
+      { label: "Requests", path: "/spare", param: { view: "requests" } },
+      { label: "Stock Items", path: "/spare", param: { view: "stock" } },
+    ],
+  },
+
+  {
     key: "storage",
     label: "Cloud & Storage",
     icon: "☁️",
@@ -84,6 +98,8 @@ const NAV = [
     ],
   },
 
+  { to: "/procurement", label: "Purchase Request Log", icon: "🧾" },
+
   { to: "/auditlogs", label: "Audit Logs", icon: "📝" },
 ];
 
@@ -110,6 +126,16 @@ export default function Layout({ children }) {
   const { pathname, search } = useLocation();
   const loggedIn = Boolean(getToken());
 
+  // Sidebar ayon sa role ng user (hal. Procurement = PRL lang).
+  const nav = filterNavForRole(NAV, getUser()?.role);
+
+  // Mga page na mahahanap sa Ctrl K (galing sa sidebar mismo).
+  const pages = nav.flatMap((it) =>
+    it.children
+      ? it.children.map((c) => ({ label: `${it.label} › ${c.label}`, to: buildTo(c) }))
+      : [{ label: it.label, to: it.to }]
+  );
+
   // Normalisahin: alisin ang unang "?" para pantay ang paghahambing.
   const currentQuery = search.startsWith("?") ? search.slice(1) : search;
 
@@ -128,7 +154,7 @@ export default function Layout({ children }) {
 
   const [openKeys, setOpenKeys] = useState(() => {
     const initial = {};
-    NAV.forEach((it) => {
+    nav.forEach((it) => {
       if (it.children && it.children.some(isActive)) initial[it.key] = true;
     });
     return initial;
@@ -136,7 +162,7 @@ export default function Layout({ children }) {
   });
 
   useEffect(() => {
-    NAV.forEach((it) => {
+    nav.forEach((it) => {
       if (!it.children) return;
       if (it.children.some(isActive)) {
         setOpenKeys((k) => ({ ...k, [it.key]: true }));
@@ -159,7 +185,7 @@ export default function Layout({ children }) {
         <p className="subtitle">Dizon Farms Produce, Inc.</p>
 
         <nav className="nav-groups">
-          {NAV.map((it) => {
+          {nav.map((it) => {
             if (!it.children) {
               return (
                 <Link
@@ -209,7 +235,21 @@ export default function Layout({ children }) {
         <UserMenu />
       </aside>
 
-      <main className="content">{children}</main>
+      <main className="content">
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            alignItems: "center",
+            gap: 12,
+            marginBottom: 12,
+          }}
+        >
+          <QuickSearch pages={pages} />
+          <NotificationBell />
+        </div>
+        {children}
+      </main>
     </div>
   );
 }
